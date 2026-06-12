@@ -61,6 +61,8 @@
 | D15 | bindings 表示法(S03) | 獨立 bindings 區塊(方案 A),型別已定稿進 scene-core | decisions/S03-bindings-format.md |
 | D16 | 綁定 UX(S04) | 屬性面板開關 + 畫布角標(角標僅 UI 層,不進場景) | decisions/S04-binding-ux.md |
 | D17 | 文字高度不入庫 | TextElement 只存 width,高度由內容推導(spike 發現,防 D12 必炸) | decisions/S01-render-base.md 附帶 |
+| D18 | 映射層 origin | center(fabric v7 原生預設);S01 所記「編輯態毛刺」撤銷(視覺誤判) | decisions/D18-fabric-origin-and-editing.md |
+| D19 | 內建字體(Q7) | Noto Sans TC Regular,完整不子集(D09 延伸),M5 以 woff2 打包 | decisions/D19-builtin-font.md |
 
 ## 5. 待決清單
 

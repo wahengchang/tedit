@@ -26,9 +26,10 @@
 - **共同弱點**:逐字換行使英文單字被攔腰折斷(「t|hat」「pix|el-perfect」)。混排要漂亮須自寫
   斷行(CJK 逐字 + 拉丁按詞),兩邊都一樣;列 M6 背包,不影響本決議。
 - 編輯態 vs 渲染態:
-  - fabric:IText **畫布內原生編輯**,編輯態與渲染態同一光柵化路徑(同字形)。但 spike 發現
-    center-origin + Textbox 編輯態出現**渲染位移毛刺**(`evidence/fabric-t4-editing-state.png`,
-    提交後恢復、不影響存檔與 diff)。判定**可修**:M4 編輯期改用 top-left origin 或編輯前後換算。
+  - fabric:IText **畫布內原生編輯**,編輯態與渲染態同一光柵化路徑(同字形)。
+    ~~spike 發現編輯態位移毛刺~~ → **撤銷(D18,2026-06-12)**:重跑流程 dump 座標證實
+    編輯態全程穩定;當時截圖是「米色文字疊米色背景隱形」的視覺誤判
+    (`evidence/fabric-t4-editing-state.png` 中矩形已被 T2 拖走)。fabric 此項實際更強。
   - Konva:無內建編輯態,須 DOM textarea 覆蓋(`evidence/konva-t4-editing-state.png`)。位置正確,
     但 DOM 按詞換行 vs canvas 逐字換行,**編輯態斷行與渲染態不一致**——結構性缺陷,修不掉只能緩解。
 - IME:headless 環境無法真實測注音/拼音組字。fabric 走隱藏 textarea、Konva overlay 是原生 DOM,
@@ -40,7 +41,7 @@
 fabric:
 1. lineHeight 含內部 `_fontSizeMult = 1.13` 係數,映射層須 ÷1.13 / ×1.13 吸收——**依賴未文檔化
    內部常數,升版要驗**(往返測試會抓到,風險可控)。
-2. center-origin 編輯態毛刺(上節)。
+2. ~~center-origin 編輯態毛刺~~ 撤銷(D18:視覺誤判,編輯態實際穩定)。
 3. `splitByGrapheme` 英文斷詞(與 Konva 同病,不計分差)。
 
 Konva:
