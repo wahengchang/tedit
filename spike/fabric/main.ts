@@ -5,12 +5,14 @@ import { Canvas, StaticCanvas } from 'fabric';
 import type { Template } from '../../src/core/scene/types.js';
 import { load, save } from './mapping.js';
 import { loadFont, markRenderStart, markRenderDone } from '../shared/gate.js';
+import { attachDemoUi } from '../shared/demo-ui.js';
 
 const FONTS: Record<string, string> = {
   'Noto Sans TC': '/assets/fonts/NotoSansTC-Regular.otf',
 };
 
-const mode = new URLSearchParams(location.search).get('mode') ?? 'edit';
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') ?? 'edit';
 
 const stageDiv = document.getElementById('stage')!;
 const canvasEl = document.createElement('canvas');
@@ -65,3 +67,5 @@ window.proto = {
     canvas.renderAll();
   },
 };
+
+if (params.has('demo')) attachDemoUi(window.proto, 'fabric 7');
