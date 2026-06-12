@@ -1,0 +1,7 @@
+{
+  "name": "demo",
+  "canvasDefaults": { "width": 1200, "height": 630, "background": "#ffffff" },
+  "fonts": [
+    { "family": "Noto Sans TC", "file": "assets/fonts/NotoSansTC-Regular.otf" }
+  ]
+}

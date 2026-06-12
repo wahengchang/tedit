@@ -1,0 +1,94 @@
+{
+  "fabric": {
+    "engine": "fabric",
+    "tasks": {
+      "t1": {
+        "pixelDiff": 0,
+        "roundtripMismatches": []
+      },
+      "t2": {
+        "savedXY": {
+          "x": 210,
+          "y": 150
+        },
+        "expectedXY": {
+          "x": 210,
+          "y": 150
+        },
+        "posOk": true,
+        "textUntouched": true,
+        "pixelDiff": 0,
+        "reloadRoundtripMismatches": []
+      },
+      "t3": {
+        "savedSize": {
+          "width": 360,
+          "height": 225
+        },
+        "aspectBefore": 1.6,
+        "aspectAfter": 1.6,
+        "aspectKept": true,
+        "scaledDown": true,
+        "pixelDiff": 0
+      },
+      "t4": {
+        "contentChanged": true,
+        "containsTyped": true,
+        "contentPreview": "【已改】,海上明月共潮生。This is a mixed CJK/English line that should wr",
+        "pixelDiff": 0
+      }
+    },
+    "workarounds": [],
+    "pageErrors": [],
+    "loc": {
+      "mapping": 201,
+      "main": 57
+    }
+  },
+  "konva": {
+    "engine": "konva",
+    "tasks": {
+      "t1": {
+        "pixelDiff": 0,
+        "roundtripMismatches": []
+      },
+      "t2": {
+        "savedXY": {
+          "x": 210,
+          "y": 150
+        },
+        "expectedXY": {
+          "x": 210,
+          "y": 150
+        },
+        "posOk": true,
+        "textUntouched": true,
+        "pixelDiff": 0,
+        "reloadRoundtripMismatches": []
+      },
+      "t3": {
+        "savedSize": {
+          "width": 360,
+          "height": 225
+        },
+        "aspectBefore": 1.6,
+        "aspectAfter": 1.6,
+        "aspectKept": true,
+        "scaledDown": true,
+        "pixelDiff": 0
+      },
+      "t4": {
+        "contentChanged": true,
+        "containsTyped": true,
+        "contentPreview": "春江潮水連海平,海上明月共潮生。This is a mixed CJK/English line that should",
+        "pixelDiff": 0
+      }
+    },
+    "workarounds": [],
+    "pageErrors": [],
+    "loc": {
+      "mapping": 259,
+      "main": 129
+    }
+  }
+}

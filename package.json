@@ -1,0 +1,36 @@
+{
+  "name": "tedit",
+  "version": "0.0.1",
+  "description": "Local visual template editor: design in browser, render PNG headlessly via CLI",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tedit": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "spike": "node spike/run-spike.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.9.3",
+    "@types/pngjs": "^6.0.5",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.4.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0"
+  },
+  "dependencies": {
+    "fabric": "^7.4.0",
+    "js-yaml": "^4.2.0",
+    "konva": "^10.3.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
+  }
+}
