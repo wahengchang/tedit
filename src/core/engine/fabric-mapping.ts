@@ -21,6 +21,13 @@ interface TeditMeta {
   teditShape?: ShapeElement['shape'];
   teditNaturalW?: number;
   teditNaturalH?: number;
+  /** 圖片設計框(schema 的 width/height)。contain 時物件尺寸=內容框≠設計框,
+   *  save 必須以設計框回寫,否則設計意圖靜默遺失(D12 看守點) */
+  teditBoxW?: number;
+  teditBoxH?: number;
+  /** 載入時 applyFit 設定的 scale;save 以 scaleX/teditLoadScaleX 還原使用者縮放倍率 */
+  teditLoadScaleX?: number;
+  teditLoadScaleY?: number;
 }
 
 export async function load(canvas: AnyCanvas, scene: Template, assetBase: string): Promise<void> {
@@ -90,6 +97,10 @@ async function elementToObject(el: SceneElement, assetBase: string): Promise<Fab
       angle: el.rotation,
     });
     applyFit(obj, el.fit, el.width, el.height, natW, natH);
+    meta.teditBoxW = el.width;
+    meta.teditBoxH = el.height;
+    meta.teditLoadScaleX = obj.scaleX;
+    meta.teditLoadScaleY = obj.scaleY;
     obj.set(meta as unknown as Record<string, unknown>);
     return obj;
   }
@@ -181,16 +192,26 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
         shape: m.teditShape!,
         width: dispW,
         height: dispH,
-        fill: ((m.fill as string) || 'transparent') as string,
+        // line 的 fill 無效(schema 規定),不回寫 fabric 的預設黑
+        fill: m.teditShape === 'line' ? 'transparent' : (((m.fill as string) || 'transparent') as string),
         stroke: ((m.stroke as string) || 'transparent') as string,
         strokeWidth: m.strokeWidth,
       });
     } else if (m.teditType === 'image') {
+      // 以「設計框 × 使用者縮放倍率」回寫:contain 時物件尺寸是內容框≠設計框,
+      // 直接回寫會把設計意圖靜默改掉(本 bug 由往返測試抓出,D12 生效實例)
+      const userSx = m.scaleX / m.teditLoadScaleX!;
+      const userSy = m.scaleY / m.teditLoadScaleY!;
+      const boxW = round(m.teditBoxW! * userSx);
+      const boxH = round(m.teditBoxH! * userSy);
       out.elements.push({
-        ...base,
+        id: m.teditId,
+        x: round(cx - boxW / 2),
+        y: round(cy - boxH / 2),
+        rotation: round(m.angle),
         type: 'image',
-        width: dispW,
-        height: dispH,
+        width: boxW,
+        height: boxH,
         src: m.teditSrc!,
         fit: m.teditFit!,
       });

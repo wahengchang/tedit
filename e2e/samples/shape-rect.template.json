@@ -1,0 +1,11 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 600, "height": 400, "background": "#ffffff" },
+  "elements": [
+    { "id": "s1", "type": "shape", "shape": "rect", "x": 80, "y": 70, "width": 300,
+      "height": 200, "rotation": 0, "fill": "#1e3a5f", "stroke": "#c9a86a", "strokeWidth": 6 },
+    { "id": "s2", "type": "shape", "shape": "rect", "x": 320, "y": 180, "width": 180,
+      "height": 140, "rotation": 25, "fill": "transparent", "stroke": "#d62828", "strokeWidth": 3 }
+  ],
+  "bindings": []
+}

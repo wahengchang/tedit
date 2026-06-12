@@ -10,6 +10,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "npm run build && npm run test:parity && npm run test:cli",
+    "test:parity": "node e2e/run-parity.mjs",
+    "test:cli": "node e2eCli/run-cli.mjs",
     "spike": "node spike/run-spike.mjs"
   },
   "engines": {
@@ -22,6 +26,7 @@
     "@types/pngjs": "^6.0.5",
     "esbuild": "^0.28.1",
     "eslint": "^10.4.1",
+    "globals": "^17.6.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"
   },

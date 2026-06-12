@@ -1,0 +1,9 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 600, "height": 400, "background": "#f4f1ea" },
+  "elements": [
+    { "id": "s1", "type": "shape", "shape": "ellipse", "x": 120, "y": 80, "width": 360,
+      "height": 220, "rotation": 0, "fill": "#588157", "stroke": "#344e41", "strokeWidth": 4 }
+  ],
+  "bindings": []
+}

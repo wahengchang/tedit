@@ -3,3 +3,5 @@ dist/
 *.log
 .DS_Store
 spike/out/
+spike/out/origin-exp*
+e2e/out/

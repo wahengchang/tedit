@@ -1,0 +1,13 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 800, "height": 500, "background": "#fdf6e3" },
+  "elements": [
+    {
+      "id": "t1", "type": "text", "x": 180, "y": 120, "width": 420, "rotation": 30,
+      "content": "旋轉三十度的多行文字 rotated thirty degrees,繞推導高度的中心旋轉。",
+      "fontFamily": "Noto Sans TC", "fontSize": 26, "color": "#0b3d91",
+      "align": "center", "lineHeight": 1.4
+    }
+  ],
+  "bindings": []
+}

@@ -1,0 +1,9 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 700, "height": 400, "background": "#e8e8e8" },
+  "elements": [
+    { "id": "i1", "type": "image", "x": 100, "y": 40, "width": 200, "height": 320,
+      "rotation": 0, "src": "assets/images/test-photo.png", "fit": "contain" }
+  ],
+  "bindings": []
+}

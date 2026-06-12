@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成
-> 更新時間:2026-06-12(M0 收官 + 可並行三成完成)
+> 更新時間:2026-06-12(M0 收官 + R1/R2 補充研究 D18/D19 + M1 test-harness 全綠)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -22,7 +22,7 @@ tedit/
 │   │   ├── project.ts                  ✅ project.json 解析+字體註冊表
 │   │   ├── resolver/                   ❌ 變數注入純函式(M3;S03 已解鎖)
 │   │   └── engine/
-│   │       ├── fabric-mapping.ts       ✅ load/save 映射層(spike 勝方;❌ M1 整理待做)
+│   │       ├── fabric-mapping.ts       ✅ load/save 映射層(M1 修正 contain 設計框/line fill 兩 bug)
 │   │       ├── gate.ts                 ✅ 渲染守門(FontFace+fonts.ready+圖片 decode)
 │   │       └── browser-entry.ts        ✅ bundle 入口(window.teditEngine;❌ 編輯模式接線=M4)
 │   ├── cli/
@@ -37,8 +37,8 @@ tedit/
 │       └── ui/
 │           ├── index.html              ❌ 編輯器 UI(M4;現為佔位頁)
 │           └── headless.html           ✅ headless 出圖頁
-├── e2e/                                ❌ 編輯器互動+同像素 diff 測試(M1)
-├── e2eCli/                             ❌ CLI 情境測試(M1/M2)
+├── e2e/                                ✅ 同像素+往返 harness(10 樣本全綠;npm run test:parity)
+├── e2eCli/                             ✅ CLI 情境測試(19 斷言全綠;npm run test:cli)
 ├── examples/
 │   └── demo/                           ✅ 範例專案(模板+字體+圖+資料;煙霧測試用)
 ├── spike/                              ✅ M0 擂台(已收官;serve.mjs 可重開體驗模式)
@@ -56,17 +56,18 @@ tedit/
 - ✅ 決議文件 + 證據 + 總帳 D13–D17
 - ✅ IME 人工試用(使用者回報無明顯異常;M4 正式收尾)
 
-### M1 — 渲染核心 ❌
-- ❌ 映射層整理(spike 粗糙版 → 正式版,逐欄位核 save)
-- ❌ test-harness 進 CI:四元素類型樣本 ×(pixelmatch=0 + 往返逐欄位相等)
-- ❌ e2e/ 與 e2eCli/ 目錄建置(spike 腳本升級)
+### M1 — 渲染核心 ✅(2026-06-12;「CI 紅燈擋合併」待有遠端 repo 後補 CI 設定)
+- ✅ 映射層整理+修 bug:contain 設計框靜默遺失、line fill 回寫預設黑(皆由往返測試抓出)
+- ✅ test-harness:10 樣本(四元素類型+旋轉+三種 fit+對齊)×(pixelmatch=0+往返相等)
+- ✅ e2e/run-parity.mjs 與 e2eCli/run-cli.mjs;`npm test` 一鍵全跑
 - ✅ esbuild 產 engine.bundle.js,編輯器頁與 headless 頁共用
+- ❌ CI pipeline 設定檔(無遠端 repo,gate 暫為本地 npm test)
 
 ### M2 — render CLI(大部分已提前完成)
 - ✅ `tedit render` 全鏈路:讀檔→驗證→headless→PNG→stdout 印路徑
 - ✅ 退出碼 0/1/2/3/5 行為(已實測 2/3/5)
 - ✅ `--scale` 經 deviceScaleFactor 生效(@2x 已驗 2400×1260)
-- ❌ e2eCli 情境測試逐碼驗證(等 M1 harness)
+- ✅ e2eCli 情境測試逐碼驗證(19 斷言:退出碼/stdout 紀律/尺寸/vars)
 
 ### M3 — 變數綁定 ❌
 - ✅ schema bindings 型別+驗證(S03 定稿時順手完成)
@@ -80,8 +81,8 @@ tedit/
 - ❌ 元素:文字行內編輯/圖片上傳/形狀/畫布設定
 - ❌ 面板:屬性面板、圖層列表(z-order 拖排)
 - ❌ 綁定 UI:面板開關+角標(S04)
-- ❌ 存檔流接 server(API 已就緒)+ 修 fabric center-origin 編輯態毛刺
-- ❌ IME 正式驗證收尾
+- ❌ 存檔流接 server(API 已就緒)
+- ❌ IME 正式驗證收尾(~~編輯態毛刺~~ 已撤銷,D18:誤判,無需修)
 
 ### M5 — ui ↔ render 整合打磨 ❌
 - ❌ 編輯器存檔 → render 直接吃,端到端 pixelmatch = 0
@@ -95,10 +96,11 @@ tedit/
 
 ## 3. 已知技術債/風險備忘
 
-- fabric lineHeight 內部常數 1.13(映射層吸收;**升版要重驗**)
-- fabric center-origin + IText 編輯態位移毛刺(M4 修)
-- 英文單字攔腰折斷(兩引擎同病;M6 自寫混排斷行)
-- 內建預設字體(❓Q7)未打包,現在全靠專案註冊表
+- fabric lineHeight 內部常數 1.13(映射層吸收;**升版要重驗**,往返測試會抓)
+- ~~fabric 編輯態位移毛刺~~ 撤銷(D18:同色疊同色的視覺誤判,編輯態實測穩定)
+- 英文單字攔腰折斷(fabric splitByGrapheme;M6 自寫混排斷行)
+- 內建預設字體已定案 D19(Noto Sans TC 不子集、woff2),接線排 M5
+- 無遠端 repo → CI 硬指標暫以本地 `npm test` 代行,建遠端後補 pipeline
 
 ---
 
@@ -137,3 +139,19 @@ tedit/
    驗證了 D12(往返測試進 CI)的必要性。
 3. **CJK 混排斷行是兩引擎共同弱點**:逐字換行會折斷英文單字,要漂亮須自寫斷行(列 M6)。
 4. **IME 初步無虞**:使用者人工試用兩原型注音輸入,回報無明顯差異/異常(M4 正式收尾)。
+
+### 第二輪研究(R1/R2,2026-06-12,M1 動工前)
+
+| 決策 | 內容 | 關鍵發現 |
+|------|------|---------|
+| D18 | 映射層 origin = center(維持) | fabric v7 預設 origin 已改為 center;S01 所記「編輯態毛刺」經座標 dump 重跑證實**不存在**——是米色文字疊米色背景的視覺誤判(矩形被 T2 拖走後文字「隱形」)。M4 免 workaround |
+| D19 | 內建字 = Noto Sans TC Regular | **不子集化**(子集化會讓罕字默默出豆腐,違反 D09 精神);M5 以 woff2(wasm 工具)打包,約 -60% 體積 |
+
+### M1 test-harness 戰果(進入產品開發第一仗)
+
+往返測試上線當天就抓到兩條映射層真 bug(像素全對、save 偷偷寫錯):
+- image contain:save 把設計框寫成縮排後內容框(y 40→125、height 320→150)
+- shape line:fabric 預設黑 fill 被回寫(schema 規定 line 的 fill 無效)
+
+修正後 10 樣本全綠——**ARCHITECTURE 把 save 列為「全系統最危單點」、D12 設往返測試看守,
+第一天就雙雙應驗**。

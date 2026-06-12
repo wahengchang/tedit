@@ -1,0 +1,6 @@
+{
+  "name": "e2e-fixture",
+  "fonts": [
+    { "family": "Noto Sans TC", "file": "assets/fonts/NotoSansTC-Regular.otf" }
+  ]
+}
