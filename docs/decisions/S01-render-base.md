@@ -31,8 +31,9 @@
     提交後恢復、不影響存檔與 diff)。判定**可修**:M4 編輯期改用 top-left origin 或編輯前後換算。
   - Konva:無內建編輯態,須 DOM textarea 覆蓋(`evidence/konva-t4-editing-state.png`)。位置正確,
     但 DOM 按詞換行 vs canvas 逐字換行,**編輯態斷行與渲染態不一致**——結構性缺陷,修不掉只能緩解。
-- IME:headless 環境無法真實測注音/拼音組字,**未測**(風險備註)。fabric 走隱藏 textarea、
-  Konva overlay 是原生 DOM,理論上兩者 IME 都可用;M4 編輯器上手後人工驗一次。
+- IME:headless 環境無法真實測注音/拼音組字。fabric 走隱藏 textarea、Konva overlay 是原生 DOM,
+  理論上兩者 IME 都可用。**2026-06-12 已請使用者以 demo 模式人工試用兩原型,回報「完全沒有感覺
+  (差異)」——初步判定無明顯掉字/跑位問題**;M4 編輯器成形後再正式驗一次收尾。
 
 ## d 項(各自最醜 workaround)
 
