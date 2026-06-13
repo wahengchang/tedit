@@ -8,6 +8,7 @@ import { existsSync, mkdtempSync, writeFileSync, mkdirSync, copyFileSync, rmSync
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
+import pixelmatch from 'pixelmatch';
 import { readFileSync } from 'node:fs';
 
 const run = promisify(execFile);
@@ -16,6 +17,10 @@ const CLI = path.join(ROOT, 'dist', 'cli', 'index.js');
 const DEMO = path.join(ROOT, 'examples', 'demo');
 const TPL = path.join(DEMO, 'templates', 'card.template.json');
 const DATA = path.join(DEMO, 'data', 'sample.yaml');
+const MULTI = path.join(DEMO, 'templates', 'multibind.template.json');
+const DATA_A = path.join(DEMO, 'data', 'a.yaml');
+const DATA_B = path.join(DEMO, 'data', 'b.yaml');
+const DATA_PARTIAL = path.join(DEMO, 'data', 'partial.yaml');
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -125,6 +130,62 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
     !!parsed && parsed.every((v) => v.locations.every((l) => l.element && l.prop && 'designValue' in l)),
     '',
   );
+}
+
+// 9. M3 變數注入:換三份資料、版面不變(同尺寸),內容變→輸出像素不同
+{
+  const oA = path.join(work, 'm3-a.png');
+  const oB = path.join(work, 'm3-b.png');
+  const oDesign = path.join(work, 'm3-design.png'); // 空資料 = 全沿用設計時值
+  const rA = await cli(['render', MULTI, DATA_A, '-o', oA]);
+  const rB = await cli(['render', MULTI, DATA_B, '-o', oB]);
+  const rD = await cli(['render', MULTI, path.join(DEMO, 'data', 'empty.yaml'), '-o', oDesign]);
+  check('多綁定模板 render A/B/design 皆 exit 0', rA.code === 0 && rB.code === 0 && rD.code === 0,
+    `A=${rA.code} B=${rB.code} D=${rD.code} ${rA.stderr.slice(0,150)}`);
+  if (existsSync(oA) && existsSync(oB)) {
+    const a = PNG.sync.read(readFileSync(oA));
+    const b = PNG.sync.read(readFileSync(oB));
+    check('  三圖版面不變(尺寸全等)', a.width === b.width && a.height === b.height, `${a.width}x${a.height} vs ${b.width}x${b.height}`);
+    if (a.width === b.width && a.height === b.height) {
+      const diff = new PNG({ width: a.width, height: a.height });
+      const n = pixelmatch(a.data, b.data, diff.data, a.width, a.height, { threshold: 0 });
+      check('  不同標題 → 輸出像素不同(注入生效)', n > 0, `diff=${n}`);
+    }
+  }
+}
+
+// 10. 缺變數預設模式:exit 0 + stderr warning(沿用設計時值,D05)
+{
+  const out = path.join(work, 'm3-partial.png');
+  const r = await cli(['render', MULTI, DATA_PARTIAL, '-o', out]);
+  check('缺變數(非 strict)→ exit 0', r.code === 0, `code=${r.code}`);
+  check('  stderr 有缺變數 warning', r.stderr.includes('warning') && r.stderr.includes('photo'), r.stderr.slice(0, 200));
+  check('  stdout 仍只印路徑', r.stdout.split('\n').filter(Boolean).length === 1);
+}
+
+// 11. --strict 缺變數 → exit 4
+{
+  const out = path.join(work, 'm3-strict.png');
+  const r = await cli(['render', MULTI, DATA_PARTIAL, '-o', out, '--strict']);
+  check('--strict 缺變數 → exit 4', r.code === 4, `code=${r.code}`);
+  check('  指名缺哪個變數', r.stderr.includes('photo'), r.stderr.slice(0, 200));
+  check('  未產出 PNG', !existsSync(out));
+}
+
+// 12. --strict 資料齊全 → exit 0
+{
+  const out = path.join(work, 'm3-strict-ok.png');
+  const r = await cli(['render', MULTI, DATA_A, '-o', out, '--strict']);
+  check('--strict 資料齊全 → exit 0', r.code === 0, `code=${r.code} ${r.stderr.slice(0,150)}`);
+}
+
+// 13. 圖片變數指向不存在檔案 → exit 5
+{
+  const badData = path.join(work, 'bad-photo.yaml');
+  writeFileSync(badData, 'title: x\nphoto: ./does-not-exist.png\n');
+  const r = await cli(['render', MULTI, badData, '-o', path.join(work, 'x.png')]);
+  check('圖片變數檔案不存在 → exit 5', r.code === 5, `code=${r.code}`);
+  check('  指名是哪個變數', r.stderr.includes('photo'), r.stderr.slice(0, 200));
 }
 
 rmSync(work, { recursive: true, force: true });

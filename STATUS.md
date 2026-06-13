@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成
-> 更新時間:2026-06-12(M0 收官 + R1/R2 補充研究 D18/D19 + M1 test-harness 全綠)
+> 更新時間:2026-06-13(M0/M1/M2/M3 收官;下一步 M4 編輯器)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -20,16 +20,16 @@ tedit/
 │   │   │   ├── types.ts                ✅ schema v0(四元素+畫布+bindings,含 D17 文字高度修正)
 │   │   │   └── validate.ts             ✅ 驗證器(錯誤定位到元素 id+欄位;bindings 驗證含)
 │   │   ├── project.ts                  ✅ project.json 解析+字體註冊表
-│   │   ├── resolver/                   ❌ 變數注入純函式(M3;S03 已解鎖)
+│   │   ├── resolver/index.ts           ✅ 變數注入純函式 resolveScene + scanVars(M3)
 │   │   └── engine/
 │   │       ├── fabric-mapping.ts       ✅ load/save 映射層(M1 修正 contain 設計框/line fill 兩 bug)
 │   │       ├── gate.ts                 ✅ 渲染守門(FontFace+fonts.ready+圖片 decode)
 │   │       └── browser-entry.ts        ✅ bundle 入口(window.teditEngine;❌ 編輯模式接線=M4)
 │   ├── cli/
-│   │   ├── index.ts                    ✅ 指令骨架+argv+退出碼(2/3/5 已驗;❌ 4 等 M3)
+│   │   ├── index.ts                    ✅ 指令骨架+argv+退出碼(2/3/4/5 全驗)
 │   │   ├── shared.ts                   ✅ 模板載入/專案定位/CliError
-│   │   ├── render.ts                   ✅ M2 鏈路通(❌ 變數注入等 M3 resolver)
-│   │   ├── vars.ts                     ✅ 表格 + --json
+│   │   ├── render.ts                   ✅ 全鏈路:resolve 注入+--strict(exit4)+圖片變數路徑重映射
+│   │   ├── vars.ts                     ✅ 表格 + --json(掃描邏輯共用 core/resolver)
 │   │   ├── ui.ts                       ✅ 子行程起 server(D01:不 import web)
 │   │   └── headless/render-png.ts      ✅ Playwright 包裝(deviceScaleFactor=scale 已驗)
 │   └── web/
@@ -37,14 +37,15 @@ tedit/
 │       └── ui/
 │           ├── index.html              ❌ 編輯器 UI(M4;現為佔位頁)
 │           └── headless.html           ✅ headless 出圖頁
+├── test/run-unit.mjs                   ✅ core 純函式單元測試(resolver/scanVars/validate,20 斷言)
 ├── e2e/                                ✅ 同像素+往返 harness(10 樣本全綠;npm run test:parity)
-├── e2eCli/                             ✅ CLI 情境測試(19 斷言全綠;npm run test:cli)
+├── e2eCli/                             ✅ CLI 情境測試(33 斷言全綠;含 M3 注入/strict/圖片變數)
 ├── examples/
-│   └── demo/                           ✅ 範例專案(模板+字體+圖+資料;煙霧測試用)
+│   └── demo/                           ✅ 範例專案(card + multibind 模板、多份資料 a/b/partial/empty)
 ├── spike/                              ✅ M0 擂台(已收官;serve.mjs 可重開體驗模式)
 └── docs/
-    ├── 六份交接文件                      ✅ 總帳已更新 D13–D17
-    └── decisions/ S01–S04 + evidence/   ✅ 四決議+證據截圖
+    ├── 六份交接文件                      ✅ 總帳已更新 D13–D19
+    └── decisions/ S01–S04+D18+D19/evidence ✅ 六決議+證據截圖
 ```
 
 ## 2. 工作清單(依里程碑)
@@ -63,18 +64,20 @@ tedit/
 - ✅ esbuild 產 engine.bundle.js,編輯器頁與 headless 頁共用
 - ❌ CI pipeline 設定檔(無遠端 repo,gate 暫為本地 npm test)
 
-### M2 — render CLI(大部分已提前完成)
-- ✅ `tedit render` 全鏈路:讀檔→驗證→headless→PNG→stdout 印路徑
-- ✅ 退出碼 0/1/2/3/5 行為(已實測 2/3/5)
+### M2 — render CLI ✅(2026-06-13)
+- ✅ `tedit render` 全鏈路:讀檔→驗證→resolve→headless→PNG→stdout 印路徑
+- ✅ 退出碼 0/1/2/3/4/5 行為全測
 - ✅ `--scale` 經 deviceScaleFactor 生效(@2x 已驗 2400×1260)
-- ✅ e2eCli 情境測試逐碼驗證(19 斷言:退出碼/stdout 紀律/尺寸/vars)
+- ✅ e2eCli 情境測試逐碼驗證(退出碼/stdout 紀律/尺寸/vars)
 
-### M3 — 變數綁定 ❌
+### M3 — 變數綁定 ✅(2026-06-13)
 - ✅ schema bindings 型別+驗證(S03 定稿時順手完成)
 - ✅ `tedit vars`(表格 + --json)
-- ❌ resolver:注入純函式 / fallback+warning / --strict(exit 4)
-- ❌ render 接上 resolver(現在是「警告後以設計時值出圖」)
-- ❌ 同名變數綁多處的測試樣本
+- ✅ resolver:注入純函式 resolveScene / fallback+warning / missing 清單(--strict→exit 4)
+- ✅ render 接上 resolver + 圖片變數路徑重映射(資料檔相對→專案相對;越界/缺檔→exit 5)
+- ✅ scanVars 共用(vars 與 resolver 同一掃描函式,移入 core)
+- ✅ 同名變數綁多處:multibind.template.json + 單元測試(注入兩處、缺值去重)
+- ✅ DoD:換三份資料三張圖、版面不變(尺寸全等+像素隨內容變)、缺變數兩模式符合 §1.2
 
 ### M4 — 編輯器 v1 ❌
 - ❌ 畫布:選取/拖拉/控制柄/旋轉/刪除/複製(spike 已證明 fabric 內建大半)

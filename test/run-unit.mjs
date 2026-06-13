@@ -1,0 +1,111 @@
+// core 純函式單元測試(resolver / scanVars / validate)。
+// 前置:npm run build(從 dist 匯入編譯產物,與 e2e/e2eCli 一致)。
+
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const imp = (p) => import(pathToFileURL(path.join(ROOT, 'dist', p)).href);
+
+const { resolveScene, scanVars } = await imp('core/resolver/index.js');
+const { validateTemplate } = await imp('core/scene/validate.js');
+
+let failures = 0;
+function check(name, cond, detail = '') {
+  if (cond) console.error(`ok    ${name}`);
+  else {
+    failures++;
+    console.error(`FAIL  ${name}${detail ? `: ${detail}` : ''}`);
+  }
+}
+
+const baseScene = () => ({
+  teditVersion: '0.1',
+  canvas: { width: 1000, height: 600, background: '#fff' },
+  elements: [
+    { id: 'h', type: 'text', x: 60, y: 40, width: 880, rotation: 0, content: '設計標題', fontFamily: 'Noto Sans TC', fontSize: 48, color: '#111', align: 'left', lineHeight: 1.3 },
+    { id: 'w', type: 'text', x: 60, y: 520, width: 880, rotation: 0, content: '設計標題', fontFamily: 'Noto Sans TC', fontSize: 20, color: '#999', align: 'right', lineHeight: 1.2 },
+    { id: 'img', type: 'image', x: 60, y: 120, width: 880, height: 360, rotation: 0, src: 'assets/images/a.png', fit: 'cover' },
+  ],
+  bindings: [
+    { var: 'title', element: 'h', prop: 'content', type: 'text' },
+    { var: 'title', element: 'w', prop: 'content', type: 'text' },
+    { var: 'photo', element: 'img', prop: 'src', type: 'image' },
+  ],
+});
+
+// 1. 完整注入:同名變數綁多處皆生效
+{
+  const scene = baseScene();
+  const r = resolveScene(scene, { title: '新標題', photo: 'assets/images/b.png' });
+  check('同名變數注入到兩處 text', r.scene.elements[0].content === '新標題' && r.scene.elements[1].content === '新標題');
+  check('image src 注入', r.scene.elements[2].src === 'assets/images/b.png');
+  check('無缺變數', r.missing.length === 0);
+}
+
+// 2. 純函式:不改動輸入
+{
+  const scene = baseScene();
+  const snapshot = JSON.stringify(scene);
+  resolveScene(scene, { title: 'X', photo: 'y.png' });
+  check('輸入 scene 未被改動(純函式)', JSON.stringify(scene) === snapshot);
+}
+
+// 3. 版面不變:只有 content/src 改,其餘欄位逐一相等(M3 DoD「版面不變」)
+{
+  const scene = baseScene();
+  const r = resolveScene(scene, { title: '長度完全不同的全新標題內容', photo: 'assets/images/zzz.png' });
+  for (const i of [0, 1, 2]) {
+    const a = scene.elements[i], b = r.scene.elements[i];
+    const layoutSame = a.x === b.x && a.y === b.y && a.width === b.width && a.rotation === b.rotation;
+    check(`元素[${i}] 版面欄位不變`, layoutSame, JSON.stringify(b));
+  }
+  check('text 樣式欄位不變', r.scene.elements[0].fontSize === 48 && r.scene.elements[0].align === 'left');
+  check('image fit 不變', r.scene.elements[2].fit === 'cover');
+}
+
+// 4. 缺變數:沿用設計時值 + warning + missing 列入(D05)
+{
+  const scene = baseScene();
+  const r = resolveScene(scene, { title: '有標題' });
+  check('缺 photo → src 沿用設計時值', r.scene.elements[2].src === 'assets/images/a.png');
+  check('missing 含 photo', r.missing.includes('photo') && r.missing.length === 1);
+  check('warning 提及 photo', r.warnings.some((w) => w.includes('photo')));
+}
+
+// 5. 缺變數去重:同名變數綁兩處只報一次
+{
+  const scene = baseScene();
+  const r = resolveScene(scene, {});
+  check('title 缺值只列一次', r.missing.filter((v) => v === 'title').length === 1);
+  check('missing = [title, photo]', r.missing.length === 2);
+}
+
+// 6. 多餘資料鍵 → warning(不影響輸出)
+{
+  const scene = baseScene();
+  const r = resolveScene(scene, { title: 'A', photo: 'p.png', extra: 'ignored' });
+  check('多餘鍵 extra → warning', r.warnings.some((w) => w.includes('extra')));
+}
+
+// 7. scanVars:同名聚合 + 多 location
+{
+  const entries = scanVars(baseScene());
+  check('scanVars 聚合成 2 變數', entries.length === 2);
+  const title = entries.find((e) => e.var === 'title');
+  check('title 有 2 個綁定位置', title.locations.length === 2);
+  check('title 型別 text、設計時值帶出', title.type === 'text' && title.locations[0].designValue === '設計標題');
+  const photo = entries.find((e) => e.var === 'photo');
+  check('photo 型別 image', photo.type === 'image' && photo.locations.length === 1);
+}
+
+// 8. validate:同名變數型別衝突被拒(S03 驗證規則)
+{
+  const scene = baseScene();
+  scene.bindings.push({ var: 'title', element: 'img', prop: 'src', type: 'image' });
+  const res = validateTemplate(scene);
+  check('同名變數型別衝突 → 驗證失敗', res.ok === false && res.errors.some((e) => e.message.includes('型別衝突')));
+}
+
+console.error(failures === 0 ? '\n單元測試全部通過' : `\n單元測試 ${failures} 項失敗`);
+process.exit(failures === 0 ? 0 : 1);
