@@ -75,6 +75,13 @@ try {
   await page.waitForFunction(() => document.querySelector('#save-btn').textContent.includes('✓'), { timeout: 5000 });
 
   const savedPath = path.join(work, 'templates', 'card.template.json');
+  const layerCount2 = () => page.locator('#layers-list .layer-row').count();
+  const saveAndRead = async () => {
+    await page.locator('#save-btn').click();
+    await page.waitForFunction(() => document.querySelector('#save-btn').textContent.includes('✓'), { timeout: 5000 });
+    return JSON.parse(readFileSync(savedPath, 'utf8'));
+  };
+
   const saved = JSON.parse(readFileSync(savedPath, 'utf8'));
   const img = saved.elements.find((e) => e.id === 'img1');
   check('存檔後 img1 X 右移 ~50', Math.abs(img.x - (640 + 50)) <= 3, `x=${img.x}(原 640)`);
@@ -84,6 +91,52 @@ try {
   const histDir = path.join(work, '.tedit', 'history');
   const hist = existsSync(histDir) ? readdirSync(histDir).filter((f) => f.startsWith('card.')) : [];
   check('history 寫了一份時間戳副本', hist.length === 1, JSON.stringify(hist));
+
+  // 5b. 文字行內編輯(txt1 在最上層,雙擊進編輯態打字)
+  await page.mouse.dblclick(stage.x + 300, stage.y + 160);
+  await page.waitForTimeout(250);
+  await page.keyboard.type('行內編輯OK');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const s5b = await saveAndRead();
+  const t = s5b.elements.find((e) => e.id === 'txt1');
+  check('文字雙擊行內編輯改變內容', t.content.includes('行內編輯OK'), t.content.slice(0, 40));
+
+  // 6. 屬性編輯(stage 2):改 rect1 寬 → 檔案寬度跟著變(走映射層,非手刻)
+  await page.locator('#layers-list .layer-row', { hasText: 'rect1' }).click();
+  await page.waitForTimeout(100);
+  const widthInput = page.locator('#props-body input[data-k="width"]');
+  await widthInput.fill('250');
+  await widthInput.dispatchEvent('change');
+  await page.waitForTimeout(200);
+  const s6 = await saveAndRead();
+  check('屬性編輯:rect1 寬改成 250', Math.abs(s6.elements.find((e) => e.id === 'rect1').width - 250) <= 2,
+    `width=${s6.elements.find((e) => e.id === 'rect1').width}`);
+
+  // 7. 新增形狀 → 圖層 +1、檔案 4 元素
+  await page.locator('#add-shape').click();
+  await page.waitForTimeout(200);
+  check('新增形狀 → 圖層 4', (await layerCount2()) === 4, `count=${await layerCount2()}`);
+  const s7 = await saveAndRead();
+  check('新增形狀寫入檔案', s7.elements.length === 4 && s7.elements.some((e) => e.shape === 'rect' && e.id !== 'rect1'));
+
+  // 8. 複製選取 → 圖層 +1
+  await page.locator('#dup-btn').click();
+  await page.waitForTimeout(200);
+  check('複製 → 圖層 5', (await layerCount2()) === 5, `count=${await layerCount2()}`);
+
+  // 9. 刪除選取 → 圖層 -1
+  await page.locator('#del-btn').click();
+  await page.waitForTimeout(200);
+  check('刪除 → 圖層 4', (await layerCount2()) === 4, `count=${await layerCount2()}`);
+
+  // 10. 新增文字(demo 有註冊字體)→ 含 text 元素且可存檔
+  await page.locator('#add-text').click();
+  await page.waitForTimeout(300);
+  const s10 = await saveAndRead();
+  check('新增文字寫入檔案', s10.elements.filter((e) => e.type === 'text').length === 2, `texts=${s10.elements.filter((e) => e.type === 'text').length}`);
+  check('存出檔案通過 schema(能再 render)', s10.teditVersion === '0.1' && Array.isArray(s10.bindings));
 
   check('無 page error', errs.length === 0, errs.join(' | '));
 } catch (e) {

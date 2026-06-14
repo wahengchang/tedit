@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成 🔨 進行中
-> 更新時間:2026-06-14(M0–M3 收官;M4 stage 1 編輯器骨架完成)
+> 更新時間:2026-06-15(M0–M3 收官;M4 stage 1+2 完成,剩 stage 3 綁定 UI)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -35,8 +35,8 @@ tedit/
 │   └── web/
 │       ├── server.ts                   ✅ 靜態+模板 REST+上傳+D10 history 快照
 │       └── ui/
-│           ├── index.html              🔨 深色編輯器殼(D20;工具列/圖層/畫布/屬性)stage 1
-│           ├── editor.ts               🔨 編輯器前端:載入/圖層/選取同步/屬性顯示/存檔(M4 s1)
+│           ├── index.html              🔨 深色編輯器殼(D20;工具列/圖層/畫布/屬性)s1+s2
+│           ├── editor.ts               🔨 前端:載入/圖層拖排/選取/屬性編輯/增刪複製/行內編輯/存檔(s1+s2)
 │           └── headless.html           ✅ headless 出圖頁
 ├── test/run-unit.mjs                   ✅ core 純函式單元測試(resolver/scanVars/validate,20 斷言)
 ├── e2e/                                ✅ parity(10 樣本)+ editor e2e(載入→拖拉→存檔)harness
@@ -89,11 +89,13 @@ tedit/
 - ✅ 存檔流:saveScene → PUT /api/templates + D10 history(e2e 驗:拖拉後座標確實寫回)
 - ✅ engine 加編輯器 API(listLayers/selectById/selectedId/onChange);editor.bundle 與 engine.bundle 分離
 
-**stage 2 ❌:屬性可編輯 + 元素增刪複製**
-- ❌ 屬性面板雙向編輯(x/y/寬高/旋轉/字級/顏色…,中心 origin 正確換算)
-- ❌ 工具列＋文字/＋圖片(上傳落地 assets/images)/＋形狀
-- ❌ 刪除/複製(鍵盤 + 按鈕)、圖層拖排改 z-order
-- ❌ 文字雙擊行內編輯(fabric IText,免 workaround D18)
+**stage 2 ✅(2026-06-15):屬性可編輯 + 元素增刪複製 + 圖層拖排 + 行內編輯**
+- ✅ 屬性面板雙向編輯(x/y/寬高/旋轉/字級/字體/對齊/顏色/裁切/形狀/描邊)
+      做法:改 schema 欄位 → 走 load 映射層 reload,origin/裁切換算交給映射層(零手刻數學)
+- ✅ 工具列 ＋文字/＋圖片(上傳→POST /api/assets/images 落地)/＋形狀
+- ✅ 刪除/複製(按鈕 + Delete / Cmd+D;刪除連帶清掉指向該元素的 bindings)
+- ✅ 圖層列表拖排改 z-order
+- ✅ 文字雙擊 fabric IText 行內編輯(免 workaround D18;e2e 驗證內容寫回)
 
 **stage 3 ❌:變數綁定 UI(S04)**
 - ❌ 屬性面板綁定開關 + 變數名輸入 → 寫 bindings

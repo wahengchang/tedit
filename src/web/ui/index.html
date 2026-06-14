@@ -48,6 +48,7 @@
     }
     .layer-row:hover { background: #2d2d2d; }
     .layer-row.selected { background: #2d2d2d; border-left-color: var(--accent); }
+    .layer-row.drop-target { box-shadow: inset 0 2px 0 var(--accent); }
     .layer-icon { width: 16px; text-align: center; color: var(--accent); }
     .layer-id { color: var(--text); }
     .empty { color: var(--muted); padding: 8px 12px; font-style: italic; }
@@ -59,23 +60,36 @@
     /* 屬性 */
     .prop-head { padding: 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
     .prop-head em { color: var(--muted); font-style: normal; margin-left: 6px; }
-    .prop { display: flex; justify-content: space-between; padding: 4px 12px; }
-    .prop span { color: var(--muted); }
+    .prop { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 12px; }
+    .prop.col { flex-direction: column; align-items: stretch; }
+    .prop span { color: var(--muted); flex-shrink: 0; }
     .prop b { font-weight: 600; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .prop input, .prop select, .prop textarea {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 4px; padding: 3px 6px; width: 110px;
+    }
+    .prop.col textarea { width: 100%; resize: vertical; }
+    .prop input[type=color] { width: 110px; height: 26px; padding: 1px; cursor: pointer; }
+    .prop input[type=number] { width: 80px; }
   </style>
 </head>
 <body>
   <div id="toolbar">
     <span class="brand">tedit</span>
     <div class="tools">
-      <button disabled title="stage 2">＋文字</button>
-      <button disabled title="stage 2">＋圖片</button>
-      <button disabled title="stage 2">＋形狀</button>
+      <button id="add-text">＋文字</button>
+      <button id="add-image">＋圖片</button>
+      <button id="add-shape">＋形狀</button>
+    </div>
+    <div class="tools">
+      <button id="dup-btn" title="複製選取 (Cmd/Ctrl+D)">複製</button>
+      <button id="del-btn" title="刪除選取 (Delete)">刪除</button>
     </div>
     <span class="spacer"></span>
     <span class="tpl">模板：<span id="tpl-name">…</span></span>
     <button id="save-btn">存檔</button>
   </div>
+  <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
   <div id="main">
     <aside id="left" class="side">
       <h2>圖層</h2>

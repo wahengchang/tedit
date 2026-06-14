@@ -93,7 +93,15 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
     },
     onChange(cb) {
       if (!(canvas instanceof Canvas)) return () => {};
-      const events = ['selection:created', 'selection:updated', 'selection:cleared', 'object:modified'] as const;
+      // 含文字行內編輯事件(雙擊改字後刷新屬性/標記 dirty)
+      const events = [
+        'selection:created',
+        'selection:updated',
+        'selection:cleared',
+        'object:modified',
+        'text:changed',
+        'text:editing:exited',
+      ] as const;
       for (const e of events) canvas.on(e, cb);
       return () => {
         for (const e of events) canvas.off(e, cb);
