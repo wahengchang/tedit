@@ -1,20 +1,96 @@
 <!doctype html>
-<html>
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <title>tedit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tedit 編輯器</title>
   <style>
-    body { margin: 0; font-family: system-ui, sans-serif; background: #2b2b2b; color: #ddd;
-           display: grid; place-items: center; height: 100vh; }
-    .card { text-align: center; line-height: 1.8; }
-    code { background: #444; padding: 2px 6px; border-radius: 4px; }
+    /* D20:深色專業風(Figma 風) */
+    :root {
+      --bg: #1e1e1e; --panel: #252526; --border: #3a3a3a;
+      --text: #dddddd; --muted: #888888; --accent: #4a9eff; --canvas-bg: #141414;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font: 13px/1.5 system-ui, "Noto Sans TC", sans-serif;
+      display: grid; grid-template-rows: 44px 1fr; height: 100vh; overflow: hidden;
+    }
+    /* 工具列 */
+    #toolbar {
+      display: flex; align-items: center; gap: 14px; padding: 0 14px;
+      background: var(--panel); border-bottom: 1px solid var(--border);
+    }
+    #toolbar .brand { font-weight: 700; letter-spacing: .5px; }
+    #toolbar .tools { display: flex; gap: 6px; }
+    #toolbar button {
+      font: inherit; color: var(--text); background: #333; border: 1px solid var(--border);
+      padding: 5px 12px; border-radius: 6px; cursor: pointer;
+    }
+    #toolbar button:hover { background: #3c3c3c; }
+    #toolbar .spacer { flex: 1; }
+    #toolbar .tpl { color: var(--muted); }
+    #save-btn { background: var(--accent); border-color: var(--accent); color: #fff; }
+    /* 三欄主體 */
+    #main { display: grid; grid-template-columns: 200px 1fr 240px; min-height: 0; }
+    .side { background: var(--panel); overflow-y: auto; }
+    #left { border-right: 1px solid var(--border); }
+    #right { border-left: 1px solid var(--border); }
+    .side h2 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+      margin: 0; padding: 12px 12px 6px;
+    }
+    /* 圖層 */
+    .layer-row {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+    .layer-row:hover { background: #2d2d2d; }
+    .layer-row.selected { background: #2d2d2d; border-left-color: var(--accent); }
+    .layer-icon { width: 16px; text-align: center; color: var(--accent); }
+    .layer-id { color: var(--text); }
+    .empty { color: var(--muted); padding: 8px 12px; font-style: italic; }
+    /* 畫布區 */
+    #canvas-wrap {
+      background: var(--canvas-bg); overflow: auto; display: grid; place-items: center;
+    }
+    #stage { box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+    /* 屬性 */
+    .prop-head { padding: 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .prop-head em { color: var(--muted); font-style: normal; margin-left: 6px; }
+    .prop { display: flex; justify-content: space-between; padding: 4px 12px; }
+    .prop span { color: var(--muted); }
+    .prop b { font-weight: 600; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>tedit</h1>
-    <p>編輯器 UI 於 M4 實作(S01=fabric、S02=vanilla TS、S04=面板開關+角標 已定案)。</p>
-    <p>server API 已就緒:<code>/api/project</code>、<code>/api/templates</code>、<code>/api/assets/images</code></p>
+  <div id="toolbar">
+    <span class="brand">tedit</span>
+    <div class="tools">
+      <button disabled title="stage 2">＋文字</button>
+      <button disabled title="stage 2">＋圖片</button>
+      <button disabled title="stage 2">＋形狀</button>
+    </div>
+    <span class="spacer"></span>
+    <span class="tpl">模板：<span id="tpl-name">…</span></span>
+    <button id="save-btn">存檔</button>
   </div>
+  <div id="main">
+    <aside id="left" class="side">
+      <h2>圖層</h2>
+      <div id="layers-list"></div>
+    </aside>
+    <div id="canvas-wrap">
+      <div id="stage"></div>
+    </div>
+    <aside id="right" class="side">
+      <h2>屬性</h2>
+      <div id="props-body"></div>
+    </aside>
+  </div>
+  <!-- engine.bundle 先載(設定 window.teditEngine),editor.bundle 後載 -->
+  <script src="/__tedit/engine.bundle.js"></script>
+  <script src="/__tedit/editor.bundle.js"></script>
 </body>
 </html>

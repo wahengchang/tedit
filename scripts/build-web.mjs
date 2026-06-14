@@ -1,4 +1,7 @@
-// 產出 dist/web/:engine.bundle.js(編輯器頁與 headless 頁共用,D06)+ 靜態頁面。
+// 產出 dist/web/:
+//   engine.bundle.js — 編輯器頁與 headless 頁共用(D06/D11 同像素結構保證)
+//   editor.bundle.js — 編輯器前端(M4;只透過 window.teditEngine 與引擎溝通)
+//   + 靜態頁面
 import { build } from 'esbuild';
 import { mkdir, copyFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +15,14 @@ await build({
   entryPoints: [path.join(ROOT, 'src', 'core', 'engine', 'browser-entry.ts')],
   bundle: true,
   outfile: path.join(OUT, 'engine.bundle.js'),
+  format: 'iife',
+  define: { 'process.env.NODE_ENV': '"production"' },
+  logLevel: 'warning',
+});
+await build({
+  entryPoints: [path.join(ROOT, 'src', 'web', 'ui', 'editor.ts')],
+  bundle: true,
+  outfile: path.join(OUT, 'editor.bundle.js'),
   format: 'iife',
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'warning',

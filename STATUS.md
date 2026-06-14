@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
-> 標記:✅ 完成 ❌ 未完成
-> 更新時間:2026-06-13(M0/M1/M2/M3 收官;下一步 M4 編輯器)
+> 標記:✅ 完成 ❌ 未完成 🔨 進行中
+> 更新時間:2026-06-14(M0–M3 收官;M4 stage 1 編輯器骨架完成)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -24,7 +24,7 @@ tedit/
 │   │   └── engine/
 │   │       ├── fabric-mapping.ts       ✅ load/save 映射層(M1 修正 contain 設計框/line fill 兩 bug)
 │   │       ├── gate.ts                 ✅ 渲染守門(FontFace+fonts.ready+圖片 decode)
-│   │       └── browser-entry.ts        ✅ bundle 入口(window.teditEngine;❌ 編輯模式接線=M4)
+│   │       └── browser-entry.ts        ✅ bundle 入口 + 編輯器 API(listLayers/selectById/selectedId/onChange)
 │   ├── cli/
 │   │   ├── index.ts                    ✅ 指令骨架+argv+退出碼(2/3/4/5 全驗)
 │   │   ├── shared.ts                   ✅ 模板載入/專案定位/CliError
@@ -35,17 +35,18 @@ tedit/
 │   └── web/
 │       ├── server.ts                   ✅ 靜態+模板 REST+上傳+D10 history 快照
 │       └── ui/
-│           ├── index.html              ❌ 編輯器 UI(M4;現為佔位頁)
+│           ├── index.html              🔨 深色編輯器殼(D20;工具列/圖層/畫布/屬性)stage 1
+│           ├── editor.ts               🔨 編輯器前端:載入/圖層/選取同步/屬性顯示/存檔(M4 s1)
 │           └── headless.html           ✅ headless 出圖頁
 ├── test/run-unit.mjs                   ✅ core 純函式單元測試(resolver/scanVars/validate,20 斷言)
-├── e2e/                                ✅ 同像素+往返 harness(10 樣本全綠;npm run test:parity)
+├── e2e/                                ✅ parity(10 樣本)+ editor e2e(載入→拖拉→存檔)harness
 ├── e2eCli/                             ✅ CLI 情境測試(33 斷言全綠;含 M3 注入/strict/圖片變數)
 ├── examples/
 │   └── demo/                           ✅ 範例專案(card + multibind 模板、多份資料 a/b/partial/empty)
 ├── spike/                              ✅ M0 擂台(已收官;serve.mjs 可重開體驗模式)
 └── docs/
-    ├── 六份交接文件                      ✅ 總帳已更新 D13–D19
-    └── decisions/ S01–S04+D18+D19/evidence ✅ 六決議+證據截圖
+    ├── 六份交接文件                      ✅ 總帳已更新 D13–D21
+    └── decisions/ S01–S04+D18/D19/D20/evidence ✅ 決議+證據截圖
 ```
 
 ## 2. 工作清單(依里程碑)
@@ -79,13 +80,25 @@ tedit/
 - ✅ 同名變數綁多處:multibind.template.json + 單元測試(注入兩處、缺值去重)
 - ✅ DoD:換三份資料三張圖、版面不變(尺寸全等+像素隨內容變)、缺變數兩模式符合 §1.2
 
-### M4 — 編輯器 v1 ❌
-- ❌ 畫布:選取/拖拉/控制柄/旋轉/刪除/複製(spike 已證明 fabric 內建大半)
-- ❌ 元素:文字行內編輯/圖片上傳/形狀/畫布設定
-- ❌ 面板:屬性面板、圖層列表(z-order 拖排)
-- ❌ 綁定 UI:面板開關+角標(S04)
-- ❌ 存檔流接 server(API 已就緒)
-- ❌ IME 正式驗證收尾(~~編輯態毛刺~~ 已撤銷,D18:誤判,無需修)
+### M4 — 編輯器 v1 🔨(拆 stage 推進;風格=D20 深色 Figma 風)
+**stage 1 ✅(2026-06-14):骨架 + 載入/選取/拖拉/存檔閉環**
+- ✅ 深色三欄殼(工具列/圖層左/畫布中/屬性右,D20)
+- ✅ 畫布:選取/拖拉/控制柄縮放/旋轉(fabric 內建)
+- ✅ 圖層列表(z-order 由高到低)↔ 選取雙向同步
+- ✅ 屬性面板(唯讀即時顯示;隨拖拉更新)
+- ✅ 存檔流:saveScene → PUT /api/templates + D10 history(e2e 驗:拖拉後座標確實寫回)
+- ✅ engine 加編輯器 API(listLayers/selectById/selectedId/onChange);editor.bundle 與 engine.bundle 分離
+
+**stage 2 ❌:屬性可編輯 + 元素增刪複製**
+- ❌ 屬性面板雙向編輯(x/y/寬高/旋轉/字級/顏色…,中心 origin 正確換算)
+- ❌ 工具列＋文字/＋圖片(上傳落地 assets/images)/＋形狀
+- ❌ 刪除/複製(鍵盤 + 按鈕)、圖層拖排改 z-order
+- ❌ 文字雙擊行內編輯(fabric IText,免 workaround D18)
+
+**stage 3 ❌:變數綁定 UI(S04)**
+- ❌ 屬性面板綁定開關 + 變數名輸入 → 寫 bindings
+- ❌ 畫布角標(僅 UI 層,不進場景)
+- ❌ IME 正式驗證收尾(~~毛刺~~ 已撤銷 D18)
 
 ### M5 — ui ↔ render 整合打磨 ❌
 - ❌ 編輯器存檔 → render 直接吃,端到端 pixelmatch = 0

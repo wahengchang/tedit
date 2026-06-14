@@ -11,10 +11,11 @@
     "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
-    "test": "npm run build && npm run test:unit && npm run test:parity && npm run test:cli",
+    "test": "npm run build && npm run test:unit && npm run test:parity && npm run test:cli && npm run test:editor",
     "test:unit": "node test/run-unit.mjs",
     "test:parity": "node e2e/run-parity.mjs",
     "test:cli": "node e2eCli/run-cli.mjs",
+    "test:editor": "node e2e/run-editor.mjs",
     "spike": "node spike/run-spike.mjs"
   },
   "engines": {
