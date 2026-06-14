@@ -67,6 +67,11 @@ async function init() {
     : blankScene(config);
   await handle.loadScene(initial, fontReg, '/');
 
+  // 綁定角標層(S04:僅 UI 覆蓋,不進場景);#stage position:relative,inset 對齊畫布
+  const badgeLayer = document.createElement('div');
+  badgeLayer.id = 'badge-layer';
+  $('#stage').appendChild(badgeLayer);
+
   $('#tpl-name').textContent = templateName;
   handle.onChange(renderAll);
   // onChange 也在文字行內編輯後觸發 → 標記 dirty
@@ -80,6 +85,7 @@ async function init() {
 function renderAll() {
   renderLayers();
   renderProps();
+  renderBadges();
 }
 
 function markDirty() {
@@ -176,7 +182,82 @@ function renderProps() {
     html += colorF('描邊', 'stroke', el.stroke);
     html += numF('描邊寬', 'strokeWidth', el.strokeWidth);
   }
+
+  // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
+  const spec = bindSpec(el.type);
+  if (spec) {
+    const b = bindingFor(scene(), el.id);
+    html += `<div class="bind-box">
+      <label class="bind-toggle"><input type="checkbox" data-bind-toggle="1" ${b ? 'checked' : ''}>
+        <span>綁定變數（${spec.prop}）</span></label>`;
+    if (b) {
+      html += `<label class="prop"><span>變數名</span><input data-bind-var="1" type="text" value="${escapeHtml(b.var)}"></label>`;
+    }
+    html += `</div>`;
+  }
   panel.innerHTML = html;
+}
+
+/** 哪個屬性可綁(v1:text.content、image.src);shape 不可綁 */
+function bindSpec(type: SceneElement['type']): { prop: 'content' | 'src'; vtype: 'text' | 'image' } | null {
+  if (type === 'text') return { prop: 'content', vtype: 'text' };
+  if (type === 'image') return { prop: 'src', vtype: 'image' };
+  return null;
+}
+
+function bindingFor(s: Template, id: string) {
+  return s.bindings.find((b) => b.element === id) ?? null;
+}
+
+function uniqueVar(s: Template): string {
+  const used = new Set(s.bindings.map((b) => b.var));
+  let i = 1;
+  while (used.has('var' + i)) i++;
+  return 'var' + i;
+}
+
+async function toggleBinding(id: string, on: boolean) {
+  const s = scene();
+  const el = s.elements.find((e) => e.id === id);
+  if (!el) return;
+  const spec = bindSpec(el.type);
+  if (!spec) return;
+  if (on) {
+    if (!s.bindings.some((b) => b.element === id)) {
+      s.bindings.push({ var: uniqueVar(s), element: id, prop: spec.prop, type: spec.vtype });
+    }
+  } else {
+    s.bindings = s.bindings.filter((b) => b.element !== id);
+  }
+  await commit(s, id);
+}
+
+async function setBindingVar(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return; // 空名忽略,保留原值
+  const s = scene();
+  const b = s.bindings.find((x) => x.element === id);
+  if (!b) return;
+  b.var = trimmed;
+  await commit(s, id);
+}
+
+// 畫布角標(S04;僅 UI 覆蓋,不進場景)。無縮放,schema 座標 == #stage 內 px
+function renderBadges() {
+  const layer = document.getElementById('badge-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  const s = scene();
+  for (const b of s.bindings) {
+    const el = s.elements.find((e) => e.id === b.element);
+    if (!el) continue;
+    const tag = document.createElement('div');
+    tag.className = 'badge';
+    tag.textContent = `{${b.var}}`;
+    tag.style.left = `${el.x}px`;
+    tag.style.top = `${el.y}px`;
+    layer.appendChild(tag);
+  }
 }
 
 function fontFamilies(): string[] {
@@ -192,9 +273,19 @@ function wireProps() {
 
 async function applyPropEdit(e: Event) {
   const input = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-  const key = input.dataset.k as keyof SceneElement | undefined;
   const id = handle.selectedId();
-  if (!key || !id) return;
+  if (!id) return;
+  // 綁定控制先處理
+  if (input.dataset.bindToggle) {
+    await toggleBinding(id, (input as HTMLInputElement).checked);
+    return;
+  }
+  if (input.dataset.bindVar) {
+    await setBindingVar(id, input.value);
+    return;
+  }
+  const key = input.dataset.k as keyof SceneElement | undefined;
+  if (!key) return;
   const s = scene();
   const el = s.elements.find((x) => x.id === id);
   if (!el) return;
@@ -311,11 +402,17 @@ function wireKeyboard() {
 // ---------- 存檔 ----------
 async function save() {
   const s = scene();
-  await api(`/api/templates/${encodeURIComponent(templateName)}`, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(s),
-  });
+  try {
+    await api(`/api/templates/${encodeURIComponent(templateName)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(s),
+    });
+  } catch (e) {
+    // server 端 schema 驗證失敗(如變數型別衝突)→ 提示而非靜默
+    alert(`存檔失敗:\n${String(e)}`);
+    return;
+  }
   dirty = false;
   $('#save-btn').textContent = '存檔 ✓';
   setTimeout(() => ($('#save-btn').textContent = '存檔'), 1200);

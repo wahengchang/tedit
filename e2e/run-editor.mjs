@@ -138,6 +138,28 @@ try {
   check('新增文字寫入檔案', s10.elements.filter((e) => e.type === 'text').length === 2, `texts=${s10.elements.filter((e) => e.type === 'text').length}`);
   check('存出檔案通過 schema(能再 render)', s10.teditVersion === '0.1' && Array.isArray(s10.bindings));
 
+  // 11. 綁定 UI(stage 3):選 txt1(card 範本本來就綁 title)→ 改變數名 → 角標 + bindings 更新
+  await page.locator('#layers-list .layer-row', { hasText: 'txt1' }).click();
+  await page.waitForTimeout(150);
+  const toggle = page.locator('#props-body input[data-bind-toggle]');
+  check('txt1 綁定開關預設為開(範本已綁)', await toggle.isChecked());
+  const varInput = page.locator('#props-body input[data-bind-var]');
+  await varInput.fill('myTitle');
+  await varInput.dispatchEvent('change');
+  await page.waitForTimeout(200);
+  const badge = page.locator('#badge-layer .badge', { hasText: 'myTitle' });
+  check('綁定後畫布出現角標 {myTitle}', (await badge.count()) === 1);
+  const s11 = await saveAndRead();
+  const bind = s11.bindings.find((b) => b.element === 'txt1');
+  check('bindings 寫入 txt1.content=myTitle(text)', !!bind && bind.var === 'myTitle' && bind.prop === 'content' && bind.type === 'text', JSON.stringify(bind));
+
+  // 12. 取消綁定 → txt1 的 bindings 移除、{myTitle} 角標消失(photo 角標仍在)
+  await page.locator('#props-body input[data-bind-toggle]').uncheck();
+  await page.waitForTimeout(200);
+  check('取消綁定後 {myTitle} 角標消失', (await page.locator('#badge-layer .badge', { hasText: 'myTitle' }).count()) === 0);
+  const s12 = await saveAndRead();
+  check('bindings 已移除 txt1(photo 綁定保留)', !s12.bindings.some((b) => b.element === 'txt1') && s12.bindings.some((b) => b.element === 'img1'));
+
   check('無 page error', errs.length === 0, errs.join(' | '));
 } catch (e) {
   failures++;

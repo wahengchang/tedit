@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成 🔨 進行中
-> 更新時間:2026-06-15(M0–M3 收官;M4 stage 1+2 完成,剩 stage 3 綁定 UI)
+> 更新時間:2026-06-15(M0–M4 全收官;下一步 M5 整合打磨)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -35,8 +35,8 @@ tedit/
 │   └── web/
 │       ├── server.ts                   ✅ 靜態+模板 REST+上傳+D10 history 快照
 │       └── ui/
-│           ├── index.html              🔨 深色編輯器殼(D20;工具列/圖層/畫布/屬性)s1+s2
-│           ├── editor.ts               🔨 前端:載入/圖層拖排/選取/屬性編輯/增刪複製/行內編輯/存檔(s1+s2)
+│           ├── index.html              ✅ 深色編輯器殼(D20;工具列/圖層/畫布/屬性/綁定/角標)
+│           ├── editor.ts               ✅ 前端:載入/圖層拖排/選取/屬性編輯/增刪複製/行內編輯/綁定/存檔
 │           └── headless.html           ✅ headless 出圖頁
 ├── test/run-unit.mjs                   ✅ core 純函式單元測試(resolver/scanVars/validate,20 斷言)
 ├── e2e/                                ✅ parity(10 樣本)+ editor e2e(載入→拖拉→存檔)harness
@@ -80,7 +80,7 @@ tedit/
 - ✅ 同名變數綁多處:multibind.template.json + 單元測試(注入兩處、缺值去重)
 - ✅ DoD:換三份資料三張圖、版面不變(尺寸全等+像素隨內容變)、缺變數兩模式符合 §1.2
 
-### M4 — 編輯器 v1 🔨(拆 stage 推進;風格=D20 深色 Figma 風)
+### M4 — 編輯器 v1 ✅(2026-06-15;風格=D20 深色 Figma 風)
 **stage 1 ✅(2026-06-14):骨架 + 載入/選取/拖拉/存檔閉環**
 - ✅ 深色三欄殼(工具列/圖層左/畫布中/屬性右,D20)
 - ✅ 畫布:選取/拖拉/控制柄縮放/旋轉(fabric 內建)
@@ -97,10 +97,14 @@ tedit/
 - ✅ 圖層列表拖排改 z-order
 - ✅ 文字雙擊 fabric IText 行內編輯(免 workaround D18;e2e 驗證內容寫回)
 
-**stage 3 ❌:變數綁定 UI(S04)**
-- ❌ 屬性面板綁定開關 + 變數名輸入 → 寫 bindings
-- ❌ 畫布角標(僅 UI 層,不進場景)
-- ❌ IME 正式驗證收尾(~~毛刺~~ 已撤銷 D18)
+**stage 3 ✅(2026-06-15):變數綁定 UI(S04)**
+- ✅ 屬性面板綁定開關(text.content / image.src)+ 變數名輸入 → 寫 scene.bindings
+- ✅ 畫布角標 {var}(僅 UI 覆蓋層,不進場景,同像素不受影響)
+- ✅ 刪除元素連帶清綁定;存檔失敗(如型別衝突)alert 提示不靜默
+- ✅ e2e 驗證:開綁定→改名→角標出現→bindings 寫入→取消→移除
+- ⏳ IME 正式驗證收尾(留 M5;~~毛刺~~ 已撤銷 D18)
+
+**M4 DoD:** 設計→綁變數→存檔全流程可用;存出檔案經 server schema 驗證(PUT 擋非法)。
 
 ### M5 — ui ↔ render 整合打磨 ❌
 - ❌ 編輯器存檔 → render 直接吃,端到端 pixelmatch = 0
