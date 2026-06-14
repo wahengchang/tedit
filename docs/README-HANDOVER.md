@@ -63,6 +63,8 @@
 | D17 | 文字高度不入庫 | TextElement 只存 width,高度由內容推導(spike 發現,防 D12 必炸) | decisions/S01-render-base.md 附帶 |
 | D18 | 映射層 origin | center(fabric v7 原生預設);S01 所記「編輯態毛刺」撤銷(視覺誤判) | decisions/D18-fabric-origin-and-editing.md |
 | D19 | 內建字體(Q7) | Noto Sans TC Regular,完整不子集(D09 延伸),M5 以 woff2 打包 | decisions/D19-builtin-font.md |
+| D20 | 編輯器視覺風格 | 深色專業風(Figma 風,深灰底 #1e1e1e);佈局=工具列頂/圖層左/畫布中/屬性右 | decisions/D20-editor-visual-style.md |
+| D21 | 圖片變數路徑 | 維持「值相對資料檔目錄、必須在專案夾內」,夾外/缺檔→exit 5(D08 自足精神) | M3 實作 src/cli/render.ts |
 
 ## 5. 待決清單
 
