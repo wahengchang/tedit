@@ -26,8 +26,12 @@
 | 2 | ARCHITECTURE.md | 架構合約(不變的) | 動工前必讀 |
 | 3 | SPEC-CLI-AND-FILES.md | CLI 與檔案規格(不變的) | 寫 cli/server 前 |
 | 4 | SPEC-SCENE-SCHEMA.md | 場景 Schema v0 草案 | 寫 core 前 |
-| 5 | SPIKE-BRIEF.md | M0 擂台任務書(會被消耗) | **開工第一件事** |
-| 6 | MILESTONES-AND-TODO.md | 里程碑與工作清單(會被消耗) | 排程用 |
+| 5 | SPIKE-BRIEF.md | M0 擂台任務書(已歸檔) | 回顧選型 |
+| 6 | MILESTONES-AND-TODO.md | 里程碑與工作清單(隨進度打勾) | 排程用 |
+
+> 動工後新增的活文件(在 repo 根 / docs):
+> - **../STATUS.md** — 進度總覽(✅/❌ 檔案樹+里程碑),每完成一項即更新。
+> - **OVERVIEW-VISUAL.md** — 全貌視覺化(流程/編輯器功能地圖/架構/核心資料結構)。
 
 「不變的合約」(2/3/4)如需修改,請以決議形式更新本文第 4 節總帳;「會被消耗的」(5/6)隨進度打勾歸檔。
 
@@ -35,7 +39,8 @@
 
 - Node + TypeScript,**單一 package**(結構仿 `wahengchang/chainq`:`src/{core,cli,web}` 資料夾分層、單一建置、npm bin)。
 - headless 出圖:**Playwright** 載入與編輯器**同一份 engine bundle**(同像素的結構保證)。
-- 渲染基底候選 fabric.js v6 / Konva,**未定**,由 M0 spike 擂台定案(見 SPIKE-BRIEF.md)。
+- 渲染基底:**fabric v7 已定案**(D13,M0 擂台勝出;交接時文件寫 v6,實作版最新為 v7)。
+- 前端框架:**vanilla TS 已定案**(D14)。編輯器/headless 共用 `engine.bundle.js`;編輯器另有 `editor.bundle.js`。
 - 已調研並排除直接採用的現成方案:Polotno(閉源商業 SDK,但其「單一 JSON schema 貫穿編輯/出圖」架構是重要參考)、vue-fabric-editor(MIT、6.5k★,**最佳借鏡活體**,輔助線/歷史/字體載入可參照)、layerhub react-design-editor(已棄坑)、Penpot/tldraw/Excalidraw(量級或授權或定位不合)。結論:**選基底自建、選活體借鏡**。
 
 ## 4. 決議總帳(Decision Ledger)
@@ -77,45 +82,52 @@
 | S03 | bindings 表示法 | **獨立 bindings 區塊**(D15) |
 | S04 | 變數綁定操作 UX | **面板開關+角標**(D16) |
 
-### 5.2 小決定(❓×8,不擋工,開工對應模組時順手定)
+### 5.2 小決定(❓×8)— 大多已結案
 
-| # | 議題 | 交接方建議 |
+| # | 議題 | 結論/狀態 |
 |---|------|-----------|
-| Q1 | 圖片適配模式 | v1 預設 cover,可選 contain/拉伸 |
-| Q2 | 圖片變數給 URL 的下載/快取/逾時 | v1 只支援本地路徑,URL 列 M6 |
-| Q3 | `vars` 輸出要不要「必填」欄位 | v1 不要(缺變數有 fallback,無「必填」概念) |
-| Q4 | `--keep-alive` 常駐瀏覽器加速 | v1 不做,列 M6 |
-| Q5 | 畫布內文字行內編輯細節 | 隨 S01 連動(fabric=IText 內建;Konva=overlay textarea) |
-| Q6 | server API 端點形狀 | 開工時定,REST 四五個端點足矣 |
-| Q7 | 內建預設字體選款 | Noto Sans TC;是否子集化視體積 |
-| Q8 | project.json 欄位細節 | 見 SPEC-CLI §3.2 草案,標 [待確認] |
+| Q1 | 圖片適配模式 | ✅ 預設 cover,enum 含 contain/stretch(schema 已實作) |
+| Q2 | 圖片變數給 URL | ✅ v1 只支援本地路徑(D21 定:相對資料檔、夾內);URL 列 M6 |
+| Q3 | `vars`「必填」欄位 | ✅ 不設(缺變數有 fallback,無必填概念) |
+| Q4 | `--keep-alive` 常駐加速 | ⏳ v1 不做,列 M6(尚未動工) |
+| Q5 | 畫布內文字行內編輯 | ✅ fabric IText 內建,雙擊即編(M4;免 overlay) |
+| Q6 | server API 端點形狀 | ✅ REST 5 端點(project/templates×2/assets 上傳;server.ts) |
+| Q7 | 內建預設字體選款 | ✅ Noto Sans TC Regular,不子集、woff2(D19;接線排 M5) |
+| Q8 | project.json 欄位 | ✅ name/canvasDefaults/fonts 定稿(core/project.ts) |
 
 ## 6. 全系統狀態樹
 
 ```
-圖例: ✅完成  🔨已動工(粗糙版)  ▶可動工  ❓小決定
-(M0 已收官 2026-06-12:S01–S04 全定案,所有 ⏳ 解鎖)
+圖例: ✅完成  🔨進行中  ❌未開始
+(更新 2026-06-15:M0–M4 全收官;細節見 STATUS.md / OVERVIEW-VISUAL.md)
 
 tedit
 ├── core/
 │   ├── scene-core 元素schema/驗證器        ✅(含 D17 文字高度修正)
 │   │   └── bindings 區塊                   ✅ S03 定稿(型別+驗證已實作)
-│   ├── resolver                            ▶ 已解鎖(M3)
-│   └── engine/ 渲染基底 = fabric v7         🔨 spike 勝方原型已遷入,M1 整理
-│       ├── 映射層 load/save                 🔨 四元素往返通過
-│       └── 守門(fonts.ready+圖decode)      🔨 gate.ts
-├── cli/ 骨架/參數/退出碼                     🔨
-│   ├── render                              🔨 M2 鏈路通(變數注入等 M3 resolver)
-│   ├── vars                                🔨 S03 已定,讀 bindings 輸出
-│   └── headless(Playwright)                🔨
+│   ├── resolver(變數注入+scanVars)         ✅ M3
+│   └── engine/ 渲染基底 = fabric v7         ✅ M1(映射層整理+修兩 bug)
+│       ├── 映射層 load/save                 ✅ 往返測試看守(D12)
+│       ├── 守門(fonts.ready+圖decode)      ✅ gate.ts
+│       └── 編輯器 API(listLayers/select…) ✅ M4 加(headless 不呼叫)
+├── cli/ 骨架/參數/退出碼(0–5 全測)          ✅ M2
+│   ├── render(resolve→headless→PNG)        ✅ M2/M3(--scale、--strict exit4)
+│   ├── vars(表格+--json)                   ✅
+│   └── headless(Playwright)                ✅
 ├── web/
-│   ├── editor                              ▶ 已解鎖(M4,S01+S02+S04 齊)
-│   └── server                              🔨 靜態+模板讀寫+上傳+history
+│   ├── editor(深色 Figma 風)               ✅ M4(屬性/圖層/增刪複製/行內編輯/綁定/角標)
+│   └── server(靜態+REST5+上傳+history)      ✅
 ├── 專案資料夾規格(佈局/字體/history)         ✅
-├── test-harness(pixelmatch+往返)            🔨 spike 腳本可升級
+├── test-harness                            ✅ unit + parity(10) + e2eCli + editor e2e
+│                                              (`npm test` 一鍵;無遠端 repo 故 CI 暫=本地)
 └── M0 spike(S01-S04)                        ✅ 決議見 docs/decisions/
+
+下一步 M5 整合打磨 ❌ → M6 擴充背包 ❌(見 MILESTONES §2)
 ```
 
 ## 7. 體量與風險速覽
 
-工作量佔比粗估:**editor ≈ 50%** ≫ engine ≈ 20% > headless+測試 ≈ 15% > scene-core ≈ 8% > 其餘合計 ≈ 7%。風險前二:editor 交互打磨(控制柄/文字編輯態)、engine 的字體與圖片載入時序(同像素的破口都在這)。全案最危險單點:**映射層 save 方向**(詳 ARCHITECTURE §5)。
+工作量佔比粗估:**editor ≈ 50%** ≫ engine ≈ 20% > headless+測試 ≈ 15% > scene-core ≈ 8% > 其餘合計 ≈ 7%。
+進度:M0–M4 完成(含 editor 全部),約佔 v1 工作量 ~85%;剩 M5 整合打磨。
+已驗證風險:**映射層 save 方向**(ARCHITECTURE §5)——往返測試上線當天即抓到兩條真 bug(已修),看守機制有效。
+殘留風險:中文 IME 僅初步人工試過(M5 正式收尾)、字體 woff2 打包未接線(M5)。

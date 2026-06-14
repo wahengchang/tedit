@@ -43,15 +43,19 @@ tedit/
 │   │   ├── render.ts / vars.ts / ui.ts
 │   │   └── headless/         ← Playwright 包裝
 │   └── web/
-│       ├── server.ts         ← ui 模式薄後端
-│       └── ui/               ← editor 前端(框架待 S02)
-├── e2e/                      ← Playwright:編輯器互動 + 同像素 diff
+│       ├── server.ts         ← ui 模式薄後端(REST + 靜態)
+│       └── ui/               ← editor 前端(vanilla TS / S02:editor.ts + index.html)
+├── test/                     ← core 純函式單元測試(resolver/validate)
+├── e2e/                      ← Playwright:同像素 parity + 編輯器互動
 ├── e2eCli/                   ← CLI 情境測試(沿 chainq harness 風格)
 ├── examples/                 ← 範例專案資料夾(模板+資料)
 └── docs/                     ← 本文件包
 ```
 
-與 chainq 的唯一結構性差異:web/ui 不能 tsc+copy 了事——`core/engine` 帶渲染基底跑瀏覽器,且 **editor 與 headless 必須載入同一份 bundle**,故需一個 esbuild 步驟產出 `dist/web/engine.bundle.js`,兩個入口頁共用。
+與 chainq 的唯一結構性差異:web/ui 不能 tsc+copy 了事——`core/engine` 帶渲染基底跑瀏覽器。
+esbuild 產出**兩個** bundle:
+- `dist/web/engine.bundle.js` — core/engine(映射+守門),**editor 頁與 headless 頁共用同一份**(同像素結構保證,D11)。
+- `dist/web/editor.bundle.js` — web/ui/editor.ts(面板/工具列),只透過 `window.teditEngine` 與引擎溝通(`import type` 不重複打包 fabric)。
 
 ## 3. 模組依賴圖與 IN/OUT 契約
 
