@@ -42,9 +42,23 @@ export function parseProjectConfig(input: unknown): { config?: ProjectConfig; er
   return { config };
 }
 
-/** family → 專案內相對路徑(瀏覽器端再轉 URL) */
+/**
+ * 內建預設字體(D19/Q7):Noto Sans TC Regular,不子集、woff2。
+ * 隨 dist/web/fonts 打包,經 /__tedit/fonts 由編輯器 server 與 headless server 共同提供。
+ * 使用者沒註冊任何字體時的兜底(D09:不靜默 fallback,但「內建字」是合法可解析字體)。
+ */
+export const BUILTIN_FONTS: { family: string; url: string }[] = [
+  { family: 'Noto Sans TC', url: '/__tedit/fonts/NotoSansTC-Regular.woff2' },
+];
+
+/**
+ * family → 可直接給瀏覽器的字體 URL。
+ * 先放內建字,再讓專案註冊表覆蓋(同名以專案為準);
+ * 專案字體 URL = '/' + 相對路徑(由 server 從專案根提供)。
+ */
 export function buildFontRegistry(config: ProjectConfig): Record<string, string> {
   const registry: Record<string, string> = {};
-  for (const f of config.fonts) registry[f.family] = f.file;
+  for (const bf of BUILTIN_FONTS) registry[bf.family] = bf.url;
+  for (const f of config.fonts) registry[f.family] = '/' + f.file;
   return registry;
 }

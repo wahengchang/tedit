@@ -32,4 +32,13 @@ const pagesDir = path.join(ROOT, 'src', 'web', 'ui');
 for (const f of await readdir(pagesDir)) {
   if (f.endsWith('.html')) await copyFile(path.join(pagesDir, f), path.join(OUT, f));
 }
+
+// 內建字體(D19):vendor/fonts → dist/web/fonts(經 /__tedit/fonts 提供)
+const vendorFonts = path.join(ROOT, 'vendor', 'fonts');
+const outFonts = path.join(OUT, 'fonts');
+await mkdir(outFonts, { recursive: true });
+for (const f of await readdir(vendorFonts)) {
+  await copyFile(path.join(vendorFonts, f), path.join(outFonts, f));
+}
+
 console.error(`built ${path.relative(ROOT, OUT)}`);

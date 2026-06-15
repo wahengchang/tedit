@@ -89,17 +89,14 @@ export async function renderScenePng(opts: RenderOptions): Promise<Buffer> {
     const page = await ctx.newPage();
     await page.goto(`http://127.0.0.1:${port}/__tedit/headless.html`);
 
-    // 註冊表路徑 → URL(以專案根為基底)
-    const fontUrls: Record<string, string> = {};
-    for (const [family, file] of Object.entries(opts.fontRegistry)) fontUrls[family] = '/' + file;
-
+    // fontRegistry 已是可直接使用的 URL(專案字體 /…、內建字 /__tedit/fonts/…)
     try {
       await page.evaluate(
         async ({ scene, fonts }) => {
           const handle = window.teditEngine.boot('view', document.getElementById('stage')!);
           await handle.loadScene(scene, fonts, '/');
         },
-        { scene: opts.scene, fonts: fontUrls },
+        { scene: opts.scene, fonts: opts.fontRegistry },
       );
     } catch (e) {
       // 守門內失敗 = 字體/圖片載入問題 → exit 5 類

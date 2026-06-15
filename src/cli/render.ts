@@ -24,14 +24,15 @@ export async function runRender(args: RenderArgs): Promise<void> {
   const { projectDir, config } = locateProject(args.template);
   const fontRegistry = buildFontRegistry(config);
 
-  // 字體規則(D09):不在註冊表或檔案不存在 → exit 5,不靜默 fallback
+  // 字體規則(D09):不在註冊表(含內建字)或檔案不存在 → exit 5,不靜默 fallback
   const missing = findUnresolvedFonts(scene, Object.keys(fontRegistry));
   if (missing.length > 0) {
-    throw new CliError(EXIT.ASSET, `模板引用的字體未在 project.json 註冊:${missing.join('、')}`);
+    throw new CliError(EXIT.ASSET, `模板引用的字體未註冊(且非內建字):${missing.join('、')}`);
   }
-  for (const [family, file] of Object.entries(fontRegistry)) {
-    if (!existsSync(path.join(projectDir, file))) {
-      throw new CliError(EXIT.ASSET, `字體檔不存在:${family} → ${file}`);
+  // 只驗專案自帶字體檔存在;內建字隨 dist 打包,缺檔會在渲染守門時報 exit 5
+  for (const f of config.fonts) {
+    if (!existsSync(path.join(projectDir, f.file))) {
+      throw new CliError(EXIT.ASSET, `字體檔不存在:${f.family} → ${f.file}`);
     }
   }
 

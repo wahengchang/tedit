@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成 🔨 進行中
-> 更新時間:2026-06-15(M0–M4 全收官;下一步 M5 整合打磨)
+> 更新時間:2026-06-15(M0–M4 收官;M5 進行中:端到端 parity ✅ + woff2 內建字 ✅)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -106,11 +106,13 @@ tedit/
 
 **M4 DoD:** 設計→綁變數→存檔全流程可用;存出檔案經 server schema 驗證(PUT 擋非法)。
 
-### M5 — ui ↔ render 整合打磨 ❌
-- ❌ 編輯器存檔 → render 直接吃,端到端 pixelmatch = 0
-- ❌ 字體全流程打磨;缺字體 exit 5 訊息可讀性
+### M5 — ui ↔ render 整合打磨 🔨
+- ✅ 端到端同像素:編輯器頁 vs 真正的 `tedit render` = diff 0(e2e/run-e2e.mjs,card+multibind)
+- ✅ 內建字體 woff2 打包(D19):vendor/fonts→dist/web/fonts,經 /__tedit/fonts 共用;
+      buildFontRegistry 併入內建 Noto Sans TC(專案同名覆蓋);無註冊也能用內建出圖(e2eCli 驗)
+- ❌ examples/ 完整化(一鍵腳本 + README)
 - ❌ README quick start 三條指令在乾淨機器可重現
-- ✅ examples/ 範例專案雛形(demo)
+- ⏳ IME 正式驗證收尾(需真人/真 IME,自動化難;留作上線前人工項)
 
 ### M6 — 擴充背包 ❌(不承諾順序)
 - ❌ undo/redo、群組、輔助線吸附、--keep-alive、URL 圖片變數、

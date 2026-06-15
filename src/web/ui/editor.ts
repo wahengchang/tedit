@@ -7,6 +7,7 @@
 
 import type { Template, SceneElement } from '../../core/scene/types.js';
 import type { ProjectConfig } from '../../core/project.js';
+import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -22,12 +23,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
   if (!res.ok) throw new Error(`${path} → ${res.status} ${(await res.text()).slice(0, 200)}`);
   return res.json() as Promise<T>;
-}
-
-function buildFontReg(c: ProjectConfig): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const f of c.fonts) map[f.family] = '/' + f.file;
-  return map;
 }
 
 function blankScene(c: ProjectConfig): Template {
@@ -56,7 +51,7 @@ async function commit(next: Template, selectId?: string) {
 
 async function init() {
   config = await api<ProjectConfig>('/api/project');
-  fontReg = buildFontReg(config);
+  fontReg = buildFontRegistry(config);
   const names = await api<string[]>('/api/templates');
   const wanted = new URLSearchParams(location.search).get('template');
   templateName = wanted && names.includes(wanted) ? wanted : (names[0] ?? 'untitled');
@@ -261,8 +256,8 @@ function renderBadges() {
 }
 
 function fontFamilies(): string[] {
-  const fams = config.fonts.map((f) => f.family);
-  return fams.length > 0 ? fams : ['Noto Sans TC'];
+  // 內建字 + 專案字體(去重;內建永遠可選)
+  return [...new Set([...BUILTIN_FONTS.map((f) => f.family), ...config.fonts.map((f) => f.family)])];
 }
 
 function wireProps() {
@@ -312,11 +307,7 @@ function wireToolbar() {
 }
 
 async function addText() {
-  const fam = fontFamilies()[0]!;
-  if (config.fonts.length === 0) {
-    alert('專案尚未在 project.json 註冊字體,無法新增文字。');
-    return;
-  }
+  const fam = fontFamilies()[0]!; // 至少有內建 Noto Sans TC,永遠可新增文字
   const s = scene();
   const id = genId(s);
   s.elements.push({

@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import { existsSync, mkdtempSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
@@ -95,15 +95,32 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
   check('無指令 → exit 2', r2.code === 2, `code=${r2.code}`);
 }
 
-// 6. 字體未註冊 → exit 5,指名缺哪個
+// 6. 字體未註冊且非內建 → exit 5,指名缺哪個
 {
   const proj = path.join(work, 'nofont');
   mkdirSync(path.join(proj, 'templates'), { recursive: true });
-  copyFileSync(TPL, path.join(proj, 'templates', 'card.template.json'));
+  const t = JSON.parse(readFileSync(TPL, 'utf8'));
+  t.elements.find((e) => e.id === 'txt1').fontFamily = 'GhostFont'; // 既非專案註冊、也非內建
+  writeFileSync(path.join(proj, 'templates', 'card.template.json'), JSON.stringify(t));
   writeFileSync(path.join(proj, 'project.json'), JSON.stringify({ fonts: [] }));
   const r = await cli(['render', path.join(proj, 'templates', 'card.template.json'), DATA]);
-  check('字體未註冊 → exit 5', r.code === 5, `code=${r.code}`);
-  check('  stderr 指名缺字體', r.stderr.includes('Noto Sans TC'), r.stderr.slice(0, 200));
+  check('字體未註冊且非內建 → exit 5', r.code === 5, `code=${r.code}`);
+  check('  stderr 指名缺字體 GhostFont', r.stderr.includes('GhostFont'), r.stderr.slice(0, 200));
+}
+
+// 6b. 內建字體(D19):專案沒註冊任何字體,但模板用 Noto Sans TC → 走內建,exit 0
+{
+  const proj = path.join(work, 'builtin-font');
+  mkdirSync(path.join(proj, 'templates'), { recursive: true });
+  const t = JSON.parse(readFileSync(TPL, 'utf8'));
+  t.bindings = []; // 去掉圖片綁定,免得還要備圖
+  t.elements = t.elements.filter((e) => e.type !== 'image');
+  writeFileSync(path.join(proj, 'templates', 'card.template.json'), JSON.stringify(t));
+  writeFileSync(path.join(proj, 'project.json'), JSON.stringify({ fonts: [] }));
+  const out = path.join(work, 'builtin.png');
+  const r = await cli(['render', path.join(proj, 'templates', 'card.template.json'), path.join(DEMO, 'data', 'empty.yaml'), '-o', out]);
+  check('內建 Noto Sans TC 免註冊可出圖 → exit 0', r.code === 0, `code=${r.code} ${r.stderr.slice(0, 200)}`);
+  check('  內建字出圖 PNG 落地', existsSync(out));
 }
 
 // 7. 資料檔不存在 → exit 1
