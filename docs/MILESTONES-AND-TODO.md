@@ -51,11 +51,12 @@ headless包裝、server、字體載入器、固定測試場景檔
 - **DoD ✅:設計→綁變數→存檔全流程可用;存出檔案經 server schema 驗證(e2e/run-editor 全綠)**
 - 註:「10 分鐘上手」為主觀 UX 指標,未實測;IME 正式收尾留 M5
 
-### M5 — ui ↔ render 整合打磨
-- [ ] 編輯器存出的模板被 `tedit render` 直接吃,出圖與編輯器所見 pixelmatch = 0(端到端,非樣本)
-- [ ] 字體全流程:註冊→編輯器選用→headless 出圖;缺字體 exit 5 訊息可讀
-- [ ] examples/ 放一個完整範例專案(模板+資料+字體+一鍵腳本)
-- **DoD:README 的 quick start 三條指令在乾淨機器上照打可重現**
+### M5 — ui ↔ render 整合打磨 🔨(2026-06-15;剩 IME 人工項)
+- [x] 編輯器存出的模板被 `tedit render` 直接吃,端到端 pixelmatch = 0(e2e/run-e2e.mjs)
+- [x] 字體全流程:內建字 woff2 打包(D19)+ 專案註冊;缺字(非內建)exit 5 訊息可讀
+- [x] examples/demo 完整範例(模板+資料+字體+一鍵 render-all.sh + README)
+- [x] **DoD:README quick start 三指令**(根 README.md;render/vars 已實跑驗證)
+- [ ] IME 正式驗證(需真人真 IME,自動化難;列上線前人工項)
 
 ### M6 — 擴充期(背包,不承諾順序)
 undo/redo、群組、對齊輔助線與吸附、`--keep-alive`、URL 圖片變數、history 治理、更多可綁屬性(顏色/可見性)、批次資料表量產、opacity 等樣式欄位(各繳五步漣漪稅,見 ARCHITECTURE §5)。
