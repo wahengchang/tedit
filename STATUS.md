@@ -106,12 +106,12 @@ tedit/
 
 **M4 DoD:** 設計→綁變數→存檔全流程可用;存出檔案經 server schema 驗證(PUT 擋非法)。
 
-### M5 — ui ↔ render 整合打磨 🔨
+### M5 — ui ↔ render 整合打磨 🔨(剩 IME 人工項)
 - ✅ 端到端同像素:編輯器頁 vs 真正的 `tedit render` = diff 0(e2e/run-e2e.mjs,card+multibind)
 - ✅ 內建字體 woff2 打包(D19):vendor/fonts→dist/web/fonts,經 /__tedit/fonts 共用;
       buildFontRegistry 併入內建 Noto Sans TC(專案同名覆蓋);無註冊也能用內建出圖(e2eCli 驗)
-- ❌ examples/ 完整化(一鍵腳本 + README)
-- ❌ README quick start 三條指令在乾淨機器可重現
+- ✅ examples/demo 完整化:card+multibind 模板、a/b/partial/empty 資料、render-all.sh 一鍵腳本、README
+- ✅ README quick start(根 README.md:安裝 + 三指令 + CLI 一覽 + 資料夾說明)
 - ⏳ IME 正式驗證收尾(需真人/真 IME,自動化難;留作上線前人工項)
 
 ### M6 — 擴充背包 ❌(不承諾順序)
