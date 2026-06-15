@@ -25,20 +25,35 @@ npm run build
 (可選)裝成全域指令:`npm link` 之後即可直接用 `tedit …`;
 否則把下文的 `tedit` 換成 `node dist/cli/index.js`。
 
-## 快速開始(三個指令)
+## 快速開始(npm 入口,最省事)
 
 ```bash
-# 1) 開編輯器設計(深色介面;設計→拖拉/分層→把元件綁成變數→存檔)
-tedit ui --dir examples/demo
-
-# 2) 看模板裡有哪些變數(方便備資料)
-tedit vars examples/demo/templates/card.template.json
-
-# 3) 餵一份資料 → 出一張 PNG
-tedit render examples/demo/templates/card.template.json examples/demo/data/a.yaml -o out.png
+npm run ui:demo                    # 建置 + 開編輯器(範例專案 examples/demo)+ 開瀏覽器
+npm run ui -- ./my-project         # 開自己的專案資料夾(可加 --port 5174 / --no-open)
+npm run render:demo                # 一鍵:card × 兩份資料 → 兩張圖(examples/demo/out/)
+npm run tedit -- vars examples/demo/templates/card.template.json   # 任意 CLI 子指令
 ```
 
-一鍵看「同模板換資料」效果:`bash examples/demo/render-all.sh`(card × 兩份資料 → 兩張圖)。
+| npm 入口 | 作用 |
+|----------|------|
+| `npm run ui [-- <dir>] [--port n] [--no-open]` | 建置 + 起編輯器 server + 開瀏覽器 |
+| `npm run ui:demo` | 同上,專案 = `examples/demo` |
+| `npm run tedit -- <args>` | 建置 + 跑 CLI(`render` / `vars` / `ui`,等同 `tedit …`) |
+| `npm run render:demo` | 跑範例的一鍵出圖腳本 |
+
+## 或直接用 CLI(三個指令)
+
+```bash
+npm run build                      # 先建置一次
+# 1) 開編輯器設計(深色介面;設計→拖拉/分層→把元件綁成變數→存檔)
+node dist/cli/index.js ui --dir examples/demo
+# 2) 看模板裡有哪些變數
+node dist/cli/index.js vars examples/demo/templates/card.template.json
+# 3) 餵一份資料 → 出一張 PNG
+node dist/cli/index.js render examples/demo/templates/card.template.json examples/demo/data/a.yaml -o out.png
+```
+
+(`npm link` 後即可把上面的 `node dist/cli/index.js` 直接換成 `tedit`。)
 
 ## CLI 一覽
 
