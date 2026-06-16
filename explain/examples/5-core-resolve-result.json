@@ -1,0 +1,5 @@
+{
+  "scene": { "_comment": "注入後的 Template:title 已換、photo 因缺值沿用設計時值" },
+  "warnings": [ "變數 \"photo\" 未提供,沿用設計時值" ],
+  "missing": [ "photo" ]
+}

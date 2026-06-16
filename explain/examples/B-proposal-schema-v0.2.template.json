@@ -1,0 +1,19 @@
+{
+  "teditVersion": "0.2",
+  "canvas": { "width": 1200, "height": 630, "background": "#f4f1ea" },
+  "elements": [
+    { "id": "rect1", "type": "shape", "shape": "rect",
+      "x": 60, "y": 60, "width": 520, "height": 510, "rotation": 0,
+      "fill": "#1e3a5f", "stroke": "#c9a86a", "strokeWidth": 6,
+      "opacity": 1, "visible": true },
+    { "id": "txt1", "type": "text", "x": 100, "y": 110, "width": 440, "rotation": 0,
+      "content": "標題", "fontFamily": "Noto Sans TC", "fontSize": 28,
+      "color": "#f4f1ea", "align": "left", "lineHeight": 1.5,
+      "opacity": 1, "visible": true }
+  ],
+  "bindings": [
+    { "var": "title",   "element": "txt1",  "prop": "content", "type": "text"    },
+    { "var": "主色",     "element": "rect1", "prop": "fill",    "type": "color"   },
+    { "var": "顯示標章", "element": "txt1",  "prop": "visible", "type": "boolean" }
+  ]
+}

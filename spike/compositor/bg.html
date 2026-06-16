@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* 本地字體(跨 document 守門的測試點)*/
+    @font-face { font-family: 'Noto Sans TC'; src: url('/assets/fonts/NotoSansTC-Regular.otf'); }
+    html, body { margin: 0; }
+    body {
+      width: 520px; height: 260px; overflow: hidden;
+      background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);  /* HTML/CSS 畫的東西 */
+      font-family: 'Noto Sans TC';
+      position: relative;
+    }
+    .label { padding: 18px 20px; color: #ffffff; font-size: 26px; line-height: 1.4;
+             text-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    img { position: absolute; right: 12px; bottom: 12px; width: 130px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="label">這是 iframe 圖層<br>CSS 漸層 + 中文字 + 本地圖</div>
+  <img src="/assets/images/test-photo.png" alt="">
+</body>
+</html>

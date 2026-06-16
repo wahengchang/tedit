@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "errors": [
+    { "path": "elements[0](rect1).width", "message": "必須是正數" },
+    { "path": "bindings[1].type", "message": "prop \"src\" 的型別必須是 \"image\"" }
+  ]
+}

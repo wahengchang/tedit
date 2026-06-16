@@ -1,0 +1,10 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 1200, "height": 630, "background": "#f4f1ea" },
+  "elements": [
+    { "id": "txt1", "type": "text", "x": 100, "y": 110, "width": 440,
+      "rotation": 0, "content": "【改過的新標題】", "fontFamily": "Noto Sans TC",
+      "fontSize": 28, "color": "#f4f1ea", "align": "left", "lineHeight": 1.5 }
+  ],
+  "bindings": []
+}

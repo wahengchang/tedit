@@ -1,0 +1,3 @@
+title: "標題"
+主色: "#d62828"        # color 型變數吃 CSS 色值
+顯示標章: false        # boolean 型變數吃 true/false

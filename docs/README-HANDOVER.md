@@ -70,6 +70,7 @@
 | D19 | 內建字體(Q7) | Noto Sans TC Regular,完整不子集(D09 延伸),M5 以 woff2 打包 | decisions/D19-builtin-font.md |
 | D20 | 編輯器視覺風格 | 深色專業風(Figma 風,深灰底 #1e1e1e);佈局=工具列頂/圖層左/畫布中/屬性右 | decisions/D20-editor-visual-style.md |
 | D21 | 圖片變數路徑 | 維持「值相對資料檔目錄、必須在專案夾內」,夾外/缺檔→exit 5(D08 自足精神) | M3 實作 src/cli/render.ts |
+| D22 | 全圖層重構(M6 大項) | 渲染鋪面從「單 fabric canvas」改「多層合成器」:每元素一層(fabric 保留,故 D13 不推翻)+ HTML 層用本地 iframe;spike 已驗交錯+跨 document 守門 diff=0;strangler 漸進、走 feature branch | explain/layer-compositor-impact.md、explain/spike-result.md |
 
 ## 5. 待決清單
 
