@@ -60,19 +60,6 @@ async function init() {
     ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
     : blankScene(config);
 
-  // D22 階段 4 守衛:單 canvas 編輯器尚未支援 html 圖層的 WYSIWYG 編輯。
-  // 直接擋下(而非崩潰或存檔掉資料);html 模板目前用 CLI render 出圖。
-  if (initial.elements.some((e) => e.type === 'html')) {
-    $('#tpl-name').textContent = templateName;
-    $('#stage').innerHTML =
-      '<div style="max-width:520px;padding:28px;color:#ddd;font-size:15px;line-height:1.8">' +
-      '<b style="font-size:17px">此模板含 HTML 圖層</b><br>' +
-      '編輯器的 HTML 圖層 WYSIWYG 編輯排程於 D22 階段 4(多層互動)。<br>' +
-      '目前可用 CLI 出圖:<code style="background:#333;padding:2px 6px;border-radius:4px">' +
-      `tedit render templates/${templateName}.template.json data.yaml -o out.png</code></div>`;
-    return; // 不 boot 互動編輯,避免崩潰與存檔掉 html 資料
-  }
-
   handle = window.teditEngine.boot('edit', $('#stage'));
   await handle.loadScene(initial, fontReg, '/');
 
@@ -191,8 +178,13 @@ function renderProps() {
     html += colorF('描邊', 'stroke', el.stroke);
     html += numF('描邊寬', 'strokeWidth', el.strokeWidth);
   } else {
-    // html 元素(D22;階段 4 才做完整編輯 UI)
-    html += `<div class="prop"><span>HTML 來源</span><b>${el.src}</b></div>`;
+    // html 元素(D22):佔位框在畫布上可拖/縮放;內容在此貼上(inline)或顯示檔案來源
+    if (typeof el.src === 'string') {
+      html += `<div class="prop"><span>HTML 檔</span><b>${el.src}</b></div>`;
+    } else {
+      html += `<label class="prop col"><span>HTML 代碼(貼上整段)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
+    }
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">內容在出圖時渲染;畫布上顯示佔位框</small></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
@@ -314,6 +306,7 @@ function wireToolbar() {
   $('#add-text').onclick = () => void addText();
   $('#add-shape').onclick = () => void addShape();
   $('#add-image').onclick = () => $('#file-input').click();
+  $('#add-html').onclick = () => void addHtml();
   $('#del-btn').onclick = () => void deleteSelected();
   $('#dup-btn').onclick = () => void duplicateSelected();
   ($('#file-input') as HTMLInputElement).addEventListener('change', (e) => {
@@ -341,6 +334,17 @@ async function addShape() {
   s.elements.push({
     id, type: 'shape', shape: 'rect', x: 100, y: 100, width: 300, height: 200,
     rotation: 0, fill: '#4a9eff', stroke: 'transparent', strokeWidth: 0,
+  });
+  await commit(s, id);
+}
+
+async function addHtml() {
+  // 新增一個 html 圖層(佔位框);預設內嵌一段可立刻貼換的代碼
+  const s = scene();
+  const id = genId(s);
+  s.elements.push({
+    id, type: 'html', x: 120, y: 120, width: 400, height: 240, rotation: 0,
+    html: '<div style="font:24px system-ui;padding:20px;color:#fff;background:#333">貼上你的 HTML</div>',
   });
   await commit(s, id);
 }

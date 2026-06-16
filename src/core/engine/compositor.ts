@@ -99,7 +99,9 @@ export async function renderLayers(
           });
         }),
       );
-      iframe.src = assetBase + el.src;
+      // 內嵌代碼 → srcdoc;本地檔 → src(擇一,schema 已驗)
+      if (typeof el.html === 'string') iframe.srcdoc = el.html;
+      else iframe.src = assetBase + el.src!;
       container.appendChild(iframe);
     } else {
       const cEl = layerCanvas(container, z, scene.canvas.width, scene.canvas.height);

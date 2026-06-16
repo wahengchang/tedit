@@ -84,10 +84,17 @@ export interface ShapeElement extends ElementBase {
  * HTML 圖層(D22 全圖層重構):一層由本地 HTML 檔渲染的內容(經 iframe 隔離)。
  * 渲染走多層合成器(階段 2/3 實作);此元素只負責「描述」,渲染前資產須自足(不可外連)。
  */
+/**
+ * HTML 圖層(D22):一層由 HTML 渲染的內容(經 iframe 隔離,sandbox 禁 script)。
+ * 內容兩種來源,**擇一**:
+ *  - html:直接貼上的整段 HTML 代碼(inline;經 iframe srcdoc 渲染)← 編輯器貼上框用
+ *  - src :專案內本地 HTML 檔路徑(如 "assets/html/bg.html";不可外連)
+ * 編輯器以「佔位框」表示位置(可拖拉/縮放);真實內容在 headless 出圖時才渲染。
+ */
 export interface HtmlElement extends ElementBase {
   type: 'html';
   width: number;
   height: number;
-  /** 專案內相對路徑,指向本地 HTML 檔(如 "assets/html/bg.html");不可外連 */
-  src: string;
+  src?: string;
+  html?: string;
 }
