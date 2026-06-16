@@ -421,13 +421,33 @@ async function addText() {
   await commit(s, id);
 }
 
-async function addShape() {
+async function addShape(shape: 'rect' | 'ellipse' | 'line' = 'rect') {
   const s = scene();
   const id = genId(s);
-  s.elements.push({
-    id, type: 'shape', shape: 'rect', x: 100, y: 100, width: 300, height: 200,
-    rotation: 0, fill: '#4a9eff', stroke: 'transparent', strokeWidth: 0,
-  });
+  if (shape === 'line') {
+    // 線:水平線(height 0 = 兩端 y 相同);需 strokeWidth>0 才看得到
+    s.elements.push({
+      id, type: 'shape', shape: 'line', x: 100, y: 200, width: 300, height: 0,
+      rotation: 0, fill: 'transparent', stroke: '#4a9eff', strokeWidth: 4,
+    });
+  } else {
+    s.elements.push({
+      id, type: 'shape', shape, x: 100, y: 100, width: 300, height: 200,
+      rotation: 0, fill: '#4a9eff', stroke: 'transparent', strokeWidth: 0,
+    });
+  }
+  await commit(s, id);
+}
+
+/** 方向鍵微調選取元素位置(1px;Shift=10px) */
+async function nudgeSelected(dx: number, dy: number) {
+  const id = handle.selectedId();
+  if (!id) return;
+  const s = scene();
+  const el = s.elements.find((e) => e.id === id);
+  if (!el) return;
+  el.x += dx;
+  el.y += dy;
   await commit(s, id);
 }
 
@@ -520,33 +540,50 @@ async function pasteClipboard() {
 // ---------- 鍵盤 ----------
 function wireKeyboard() {
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAllModals();
-      return;
-    }
+    const modalOpen = !!document.querySelector('.modal-backdrop.open');
     const tag = (document.activeElement?.tagName ?? '').toLowerCase();
     const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+    if (e.key === 'Escape') {
+      if (modalOpen) closeAllModals();
+      else if (!typing) handle.deselect(); // 文字編輯中讓 fabric 自行退出,不搶著取消選取
+      return;
+    }
     if (typing) return; // 正在輸入(含 fabric 文字編輯的隱藏 textarea)→ 不攔截
+
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
-    if (mod && key === 's') {
-      e.preventDefault();
-      void save();
-    } else if (mod && key === 'd') {
-      e.preventDefault();
-      void duplicateSelected();
-    } else if (mod && key === 'c') {
-      e.preventDefault();
-      copySelected();
-    } else if (mod && key === 'x') {
-      e.preventDefault();
-      void cutSelected();
-    } else if (mod && key === 'v') {
-      e.preventDefault();
-      void pasteClipboard();
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      e.preventDefault();
-      void deleteSelected();
+    // ⌘/Ctrl 系列(modal 開著也允許,如 ⌘S)
+    if (mod && key === 's') { e.preventDefault(); void save(); return; }
+    if (mod && key === 'd') { e.preventDefault(); void duplicateSelected(); return; }
+    if (mod && key === 'c') { e.preventDefault(); copySelected(); return; }
+    if (mod && key === 'x') { e.preventDefault(); void cutSelected(); return; }
+    if (mod && key === 'v') { e.preventDefault(); void pasteClipboard(); return; }
+    if (mod || e.altKey) return; // 其餘修飾鍵組合交給瀏覽器/系統
+
+    // 以下單鍵;modal 開著不觸發(避免在對話框後面亂改畫布)
+    if (modalOpen) return;
+
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); void deleteSelected(); return; }
+
+    // 方向鍵微調選取(Shift = 10px)
+    if (e.key.startsWith('Arrow')) {
+      const step = e.shiftKey ? 10 : 1;
+      const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+      const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+      if (dx || dy) { e.preventDefault(); void nudgeSelected(dx, dy); }
+      return;
+    }
+
+    // 單鍵新增工具(Figma 風;不吃 Shift)
+    if (e.shiftKey) return;
+    switch (key) {
+      case 't': e.preventDefault(); void addText(); break;            // Text
+      case 'r': e.preventDefault(); void addShape('rect'); break;     // Rectangle
+      case 'o': e.preventDefault(); void addShape('ellipse'); break;  // Ellipse (O 形)
+      case 'l': e.preventDefault(); void addShape('line'); break;     // Line
+      case 'i': e.preventDefault(); ($('#file-input') as HTMLElement).click(); break; // Image
+      case 'h': e.preventDefault(); void addHtml(); break;            // HTML
     }
   });
 }
