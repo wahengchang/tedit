@@ -44,7 +44,7 @@
       "id": "brand",
       "type": "text",
       "x": 80, "y": 1248, "width": 920, "rotation": 0,
-      "content": "奧啟 Media · owlchi.com",
+      "content": "Your Brand · example.com",
       "fontFamily": "Noto Sans TC", "fontSize": 30, "color": "#5b6473",
       "align": "left", "lineHeight": 1.2
     }

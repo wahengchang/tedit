@@ -34,7 +34,7 @@
       "id": "speaker",
       "type": "text",
       "x": 80, "y": 482, "width": 700, "rotation": 0,
-      "content": "講者:張小明 · 奧啟 Media 創辦人",
+      "content": "講者:張小明 · 資深前端工程師",
       "fontFamily": "Noto Sans TC", "fontSize": 32, "color": "#e5e7eb",
       "align": "left", "lineHeight": 1.3
     },
