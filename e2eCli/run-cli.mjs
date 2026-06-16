@@ -205,6 +205,18 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
   check('  指名是哪個變數', r.stderr.includes('photo'), r.stderr.slice(0, 200));
 }
 
+// 14. D22:含 html 圖層的模板,CLI 經多層合成器出圖(三層交錯)→ exit 0
+{
+  const HTMLTPL = path.join(DEMO, 'templates', 'html-card.template.json');
+  const out = path.join(work, 'html-card.png');
+  const r = await cli(['render', HTMLTPL, path.join(DEMO, 'data', 'empty.yaml'), '-o', out]);
+  check('html 圖層模板 render → exit 0', r.code === 0, `code=${r.code} ${r.stderr.slice(0, 200)}`);
+  if (existsSync(out)) {
+    const png = PNG.sync.read(readFileSync(out));
+    check('  html-card PNG 尺寸 = 畫布 1000x600', png.width === 1000 && png.height === 600, `${png.width}x${png.height}`);
+  }
+}
+
 rmSync(work, { recursive: true, force: true });
 console.error(failures === 0 ? '\ne2eCli 全部通過' : `\ne2eCli ${failures} 項失敗`);
 process.exit(failures === 0 ? 0 : 1);
