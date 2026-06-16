@@ -1,5 +1,7 @@
 # tedit
 
+[![CI](https://github.com/wahengchang/tedit/actions/workflows/ci.yml/badge.svg)](https://github.com/wahengchang/tedit/actions/workflows/ci.yml)
+
 **本地視覺模板編輯器**:在瀏覽器自由設計版面、把任意元件綁成具名變數存成「模板」;
 之後用 CLI 餵一份資料、headless 產出 PNG。同一模板換不同資料可重複產生。
 
@@ -16,7 +18,7 @@
 ## 安裝
 
 ```bash
-git clone <repo> teditor && cd teditor
+git clone https://github.com/wahengchang/tedit.git teditor && cd teditor
 npm install
 npx playwright install chromium   # headless 出圖需要
 npm run build
