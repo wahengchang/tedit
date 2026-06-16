@@ -117,11 +117,13 @@ tedit/
 ### 全圖層重構(D22,M6 大項)🔨 進行中(branch: feature/layer-compositor)
 - ✅ spike 通過:三層交錯(矩形<iframe<文字)+ 跨 document 守門,兩次渲染 diff=0(spike/run-compositor.mjs)
 - 🔨 正式重構(strangler 漸進;docs/decisions/D22-layer-compositor.md §1 影響地圖):
-  - 階段 1:schema 加 iframe 元素類型(types/validate + 測試)← 進行中
-  - 階段 2:合成器骨架(browser-entry 改多層)
-  - 階段 3:映射層改逐層(每元素一 canvas + iframe 層)
-  - 階段 4:editor 互動(最大塊)
-  - 階段 5:headless 守門 + 測試 harness(parity 含 iframe 樣本)
+  - ✅ 階段 1:schema 加 html 元素類型(types/validate + 4 斷言;映射層擋 html)
+  - ✅ 階段 2:合成器核心模組 core/engine/compositor.ts(每元素一 StaticCanvas + iframe 層;
+        跨 document 守門 sandbox=allow-same-origin)。與舊單 canvas 並存(window.teditEngine.renderLayers)。
+        測試(e2e/run-compositor-parity.mjs):三層交錯連渲 diff=0、html 有畫、**且 compositor == 舊單 canvas diff=0**(切換零風險)
+  - ⬜ 階段 3:把 headless/editor 的 view 路徑切到 compositor(逐層映射全面化)
+  - ⬜ 階段 4:editor 互動(每元素一互動 canvas;最大塊)
+  - ⬜ 階段 5:測試 harness 切到 compositor(parity 含 html 樣本)+ --scale @2x 驗
 
 ### M6 — 擴充背包 ❌(不承諾順序)
 - ❌ undo/redo、群組、輔助線吸附、--keep-alive、URL 圖片變數、

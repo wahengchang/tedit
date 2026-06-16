@@ -5,6 +5,7 @@ import { Canvas, StaticCanvas, type FabricObject } from 'fabric';
 import type { Template, SceneElement } from '../scene/types.js';
 import { load, save } from './fabric-mapping.js';
 import { loadFont, markRenderStart, markRenderDone } from './gate.js';
+import { renderLayers } from './compositor.js';
 
 /** 圖層列表項(編輯器左欄用) */
 export interface LayerInfo {
@@ -112,8 +113,9 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
 
 declare global {
   interface Window {
-    teditEngine: { boot: typeof boot };
+    teditEngine: { boot: typeof boot; renderLayers: typeof renderLayers };
   }
 }
 
-window.teditEngine = { boot };
+// boot:既有單 canvas(v1)。renderLayers:多層合成器(D22 階段 2,view 路徑)。並存。
+window.teditEngine = { boot, renderLayers };

@@ -47,11 +47,11 @@ export async function load(canvas: AnyCanvas, scene: Template, assetBase: string
   canvas.renderAll();
 }
 
-async function elementToObject(el: SceneElement, assetBase: string): Promise<FabricObject> {
-  // html 元素由「多層合成器」渲染(D22 階段 2/3),不走 fabric 物件。
-  // 在此明確擋下,避免被當成 text 靜默誤渲染。
+/** schema 元素 → fabric 物件(單一元素;合成器逐層用,故 export)。html 不走 fabric。 */
+export async function elementToObject(el: SceneElement, assetBase: string): Promise<FabricObject> {
+  // html 元素由「多層合成器」用 iframe 渲染(D22),不走 fabric 物件。
   if (el.type === 'html') {
-    throw new Error('html 元素的渲染尚未實作(D22 階段 2/3:多層合成器)');
+    throw new Error('html 元素不走 fabric(由合成器以 iframe 渲染)');
   }
   const meta: TeditMeta = { teditId: el.id, teditType: el.type };
 
