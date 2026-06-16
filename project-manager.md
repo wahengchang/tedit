@@ -3,13 +3,11 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-16 · 在 `main`(v1 + HTML 圖層,六關測試全綠)
+> 更新:2026-06-16 · 在 `main`(v1 + HTML 圖層 + U1 UI 重製,六關測試全綠)
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
-> 🔒 **進行中車道(別碰,會撞)**:
-> - **U1 UI 重製**(依 `draft-ui/` mockup) — worktree `feat/ui-redesign`(`/Users/ppchang/Desktop/projects/teditor-ui`),自 2026-06-16 起。
->   占用 🔴 熱區 `src/web/ui/`(`editor.ts` + `index.html`)。**B1 undo / B2 對齊輔助線同吃 editor.ts → 暫鎖,等 U1 合併再開。**
+> 🟢 **目前無鎖定車道**:U1 UI 重製已合併 main(merge `fd1b0a7`),`editor.ts` 熱區釋出,B1/B2 解鎖可開。
 
 ---
 
@@ -33,7 +31,7 @@ tedit/
 │   └── headless/render-png.ts                 ✅ Playwright 出圖(走 compositor)
 ├── src/web/
 │   ├── server.ts                             ✅ 薄後端 REST5 + 上傳 + history                🟢 history 治理會動
-│   └── ui/index.html · editor.ts · headless.html  🔨 U1 UI 重製進行中(feat/ui-redesign)      🔴🔒 鎖定;undo/對齊也擠這
+│   └── ui/index.html · editor.ts · headless.html  ✅ U1 重製(zoom/狀態列/modal/變數chip)      🔴 undo/群組/對齊輔助線擠 editor.ts
 ├── 測試  test/run-unit · e2e/{parity,editor,e2e,compositor-parity} · e2eCli/run-cli  ✅ 六關全綠
 ├── examples/demo/                             ✅ card / multibind / html-card + 資料 + 一鍵腳本
 ├── spike/                                     ✅ M0 擂台 + 合成器 spike(歸檔)
@@ -53,6 +51,7 @@ tedit/
 | M4 編輯器 | 深色 Figma 風:選取/拖拉/屬性/圖層/增刪複製/IText 行內編輯/綁定+角標 | ✅ |
 | M5 整合打磨 | 端到端同像素、woff2 內建字、examples、README | 🔨 剩 IME 人工 |
 | D22 HTML 圖層 | schema html / 多層合成器 / CLI 出圖 / 編輯器佔位框+貼碼;**已合併 main** | ✅ |
+| U1 UI 重製 | zoom+dot-grid 工作區 / 狀態列 / Save·history modal / Export·Render modal(YAML+CLI+--strict) / 變數 chip;像素一致守住,**已合併 main**(merge `fd1b0a7`) | ✅ |
 
 **目前可用度**:v1 + HTML 圖層**端到端可用** —— 編輯器加層+貼代碼+定位 → `tedit render` 出像素精準 PNG;「編輯器所見 == CLI 出圖」逐像素一致。
 
@@ -67,18 +66,18 @@ tedit/
 | A1 | 中文 IME 人工驗證 | ⏳ | 機器測不了,需你雙擊文字打注音確認不掉字/跳位 → M5 收尾 |
 | A2 | 合併 feature 分支 → main | ✅ | 已合併(merge c5b82d0),分支已刪,main 六關全綠 |
 
-### U. UI 重製(進行中 🔨)
+### U. UI 重製(✅ 已合併)
 
-| # | 工作 | 狀態 | 觸碰熱區 | worktree | 備註 |
-|---|------|------|----------|----------|------|
-| U1 | 依 `draft-ui/` mockup 重製/補齊編輯器 UI(頂列工具列、屬性面板、Save/history modal、Export PNG modal、狀態列、變數 chip、8 控制柄可拖、圖層拖排 z-order) | 🔨 | 🔴🔒 `src/web/ui/`(editor.ts+index.html) | `feat/ui-redesign` | 規格基準=`draft-ui/tedit.dc.html` + 交接說明;資料模型照搬第3節 layer schema |
+| # | 工作 | 狀態 | 觸碰熱區 | 備註 |
+|---|------|------|----------|------|
+| U1 | 依 `draft-ui/` mockup 補齊編輯器 UI:zoom+dot-grid 工作區、狀態列、Save/history modal、Export/Render modal、變數 chip | ✅ | `src/web/ui/` | 增量疊在 M4;像素一致守住、六關全綠、實機驗證。8 控制柄 + 圖層拖排 z-order M4 已是 fabric 真控制(原型只示意);Export modal 為唯讀示意(真出圖走 CLI),與 mockup 一致 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 
 | # | 功能 | 狀態 | 觸碰熱區 | 可平行? | 備註 |
 |---|------|------|----------|---------|------|
-| B1 | undo / redo | 🔒 等 U1 | editor.ts | 與其他 editor 功能互斥 | 場景快照堆疊;U1 鎖 editor.ts 中,合併後再開 |
-| B2 | 對齊輔助線 + 吸附 | 🔒 等 U1 | editor.ts | 與 B1 互斥 | 純編輯器;同上,等 U1 合併 |
+| B1 | undo / redo | ⬜ | editor.ts | 與其他 editor 功能互斥 | 場景快照堆疊;U1 已合併,editor.ts 釋出可開 |
+| B2 | 對齊輔助線 + 吸附 | ⬜ | editor.ts | 與 B1 互斥 | 純編輯器;U1 已合併,可開 |
 | B3 | 批次資料表量產(CSV) | ⬜ | 🟢 cli | 可平行 | 提案見 docs/interface-examples/A-proposal-batch.csv |
 | B4 | URL 圖片變數 | ⬜ | 🟢 resolver+cli | 可平行 | 下載/快取/逾時要研究 |
 | B5 | `--keep-alive` 常駐加速 | ⬜ | 🟢 headless+cli | 可平行 | 重複出圖提速 |
@@ -89,7 +88,7 @@ tedit/
 
 > **平行化提醒**:🔴 三角(schema/映射層)與 editor.ts 是兩個序列化熱區,一次進一個;
 > 🟢 乾淨車道(cli/resolver/server/headless)可同時開 worktree。
-> **現況**:editor.ts 熱區已被 **U1(feat/ui-redesign)** 占用 🔒 → 想平行請挑 🟢 車道(B3/B4/B5/B6),別碰 editor.ts;🔴 schema 三角(B7/B8)仍空著但動它要先定資料結構。
+> **現況**:U1 已合併,editor.ts 釋出 → B1/B2 可開(但仍互斥,一次一個);🔴 schema 三角(B7/B8)動它要先定資料結構。
 
 ---
 
