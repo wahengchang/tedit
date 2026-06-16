@@ -9,6 +9,7 @@ import type { Template, SceneElement } from '../../core/scene/types.js';
 import type { ProjectConfig } from '../../core/project.js';
 import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
+import { scanVars } from '../../core/resolver/index.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇', html: '◧' };
@@ -18,6 +19,13 @@ let config: ProjectConfig;
 let fontReg: Record<string, string> = {};
 let templateName = '';
 let dirty = false;
+
+// U1:zoom 是純視圖縮放(fabric setZoom);設計尺寸在編輯器恆定。
+let zoom = 1;
+let designW = 0;
+let designH = 0;
+const Z_MIN = 0.1;
+const Z_MAX = 4;
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -39,11 +47,22 @@ function genId(scene: Template): string {
   return id;
 }
 
-const scene = () => handle.saveScene();
+// scene() = 目前畫布快照。zoom 用 setDimensions(design*zoom) 放大畫布,會讓 save() 讀到
+// 放大後的 canvas.width/height;設計尺寸在編輯器恆定,故一律正規化回 design 值
+// → 存檔/出圖尺寸不受 zoom 汙染,「所見==出圖」像素一致不破。
+const scene = (): Template => {
+  const s = handle.saveScene();
+  if (designW) {
+    s.canvas.width = designW;
+    s.canvas.height = designH;
+  }
+  return s;
+};
 
 /** 結構性變更的唯一入口:套用新 scene 並(可選)重選某元素 */
 async function commit(next: Template, selectId?: string) {
   await handle.loadScene(next, fontReg, '/');
+  applyZoom(); // loadScene 重設 canvas 尺寸 → zoom 要重套
   if (selectId) handle.selectById(selectId);
   markDirty();
   renderAll();
@@ -60,6 +79,9 @@ async function init() {
     ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
     : blankScene(config);
 
+  designW = initial.canvas.width;
+  designH = initial.canvas.height;
+
   handle = window.teditEngine.boot('edit', $('#stage'));
   await handle.loadScene(initial, fontReg, '/');
 
@@ -68,13 +90,18 @@ async function init() {
   badgeLayer.id = 'badge-layer';
   $('#stage').appendChild(badgeLayer);
 
+  applyZoom(); // 套初始 zoom(100%):loadScene 已把 canvas 設成 design,這裡接 zoom 與 #stage 尺寸
+
   $('#tpl-name').textContent = templateName;
+  $('#status-path').textContent = `templates/${templateName}.template.json`;
   handle.onChange(renderAll);
   // onChange 也在文字行內編輯後觸發 → 標記 dirty
   handle.onChange(() => markDirty());
   wireToolbar();
   wireProps();
   wireKeyboard();
+  wireZoom();
+  wireModals();
   renderAll();
 }
 
@@ -82,6 +109,59 @@ function renderAll() {
   renderLayers();
   renderProps();
   renderBadges();
+  renderStatus();
+  renderVarChip();
+}
+
+// ---------- zoom(純視圖;座標不變)----------
+function applyZoom() {
+  const c = handle.canvas;
+  c.setZoom(zoom);
+  c.setDimensions({ width: designW * zoom, height: designH * zoom });
+  const stage = $('#stage');
+  stage.style.width = `${designW * zoom}px`;
+  stage.style.height = `${designH * zoom}px`;
+  stage.style.overflow = 'visible'; // loadScene 設成 hidden;放大後角標/陰影不該被裁
+  $('#zoom-pct').textContent = `${Math.round(zoom * 100)}%`;
+  $('#status-zoom').textContent = `${Math.round(zoom * 100)}%`;
+  renderBadges();
+}
+
+function changeZoom(z: number) {
+  zoom = Math.min(Z_MAX, Math.max(Z_MIN, z));
+  applyZoom();
+}
+
+/** 符合視窗:把整張紙縮到工作區內(不放大超過 100%) */
+function fitZoom() {
+  const wrap = $('#canvas-wrap');
+  const pad = 48;
+  const z = Math.min((wrap.clientWidth - pad) / designW, (wrap.clientHeight - pad) / designH);
+  changeZoom(Math.min(1, z || 1));
+}
+
+function wireZoom() {
+  $('#zoom-in').onclick = () => changeZoom(zoom * 1.25);
+  $('#zoom-out').onclick = () => changeZoom(zoom / 1.25);
+  // 點百分比:非 100% → 回 100%;已是 100% → 符合視窗
+  $('#zoom-pct').onclick = () => (Math.abs(zoom - 1) < 0.001 ? fitZoom() : changeZoom(1));
+}
+
+// ---------- 狀態列 ----------
+function renderStatus() {
+  const el = selectedElement();
+  const sel = $('#status-sel');
+  if (!el) {
+    sel.textContent = '未選取';
+    return;
+  }
+  const dims = el.type === 'text' ? `寬 ${Math.round(el.width)}` : `${Math.round(el.width)}×${Math.round(el.height)}`;
+  sel.textContent = `選取:${el.id}(${el.type})${dims} @(${Math.round(el.x)},${Math.round(el.y)})`;
+}
+
+// ---------- 變數 chip ----------
+function renderVarChip() {
+  $('#var-count').textContent = String(scanVars(scene()).length);
 }
 
 function markDirty() {
@@ -258,8 +338,9 @@ function renderBadges() {
     const tag = document.createElement('div');
     tag.className = 'badge';
     tag.textContent = `{${b.var}}`;
-    tag.style.left = `${el.x}px`;
-    tag.style.top = `${el.y}px`;
+    // 角標層是 #stage 的 DOM 覆蓋(非 fabric 物件),fabric zoom 不會帶到它 → 自行乘 zoom
+    tag.style.left = `${el.x * zoom}px`;
+    tag.style.top = `${el.y * zoom}px`;
     layer.appendChild(tag);
   }
 }
@@ -395,6 +476,10 @@ async function duplicateSelected() {
 // ---------- 鍵盤 ----------
 function wireKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAllModals();
+      return;
+    }
     const tag = (document.activeElement?.tagName ?? '').toLowerCase();
     const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
     if (typing) return; // 正在輸入(含 fabric 文字編輯的隱藏 textarea)→ 不攔截
@@ -437,6 +522,147 @@ function escapeHtml(s: string): string {
 function toHex(css: string): string {
   // <input type=color> 只吃 #rrggbb;非此格式(transparent/具名色)退回黑色顯示
   return /^#[0-9a-f]{6}$/i.test(css) ? css : '#000000';
+}
+
+// ---------- Modal 基礎 ----------
+function openModal(id: string) {
+  $(`#${id}`).classList.add('open');
+}
+function closeModal(id: string) {
+  $(`#${id}`).classList.remove('open');
+}
+function closeAllModals() {
+  document.querySelectorAll('.modal-backdrop.open').forEach((m) => m.classList.remove('open'));
+}
+
+function wireModals() {
+  // 關閉:× / 取消(data-close)/ 點背景空白(Esc 在 wireKeyboard)
+  document.querySelectorAll<HTMLElement>('[data-close]').forEach((b) => {
+    b.onclick = () => closeModal(b.dataset.close!);
+  });
+  document.querySelectorAll<HTMLElement>('.modal-backdrop').forEach((bd) => {
+    bd.addEventListener('click', (e) => {
+      if (e.target === bd) bd.classList.remove('open');
+    });
+  });
+  // 開啟入口
+  $('#tpl-chip').onclick = () => void openSaveModal();
+  $('#export-btn').onclick = () => openExportModal();
+  $('#var-chip').onclick = () => openExportModal();
+  // 動作
+  $('#save-confirm').onclick = () => void saveFromModal();
+  $('#strict-toggle').addEventListener('change', renderExportPreview);
+}
+
+// ---------- Save / history modal ----------
+async function openSaveModal() {
+  ($('#save-name') as HTMLInputElement).value = templateName;
+  openModal('save-modal');
+  const list = $('#history-list');
+  list.innerHTML = '<li class="empty">載入中…</li>';
+  try {
+    const hist = await api<string[]>(`/api/templates/${encodeURIComponent(templateName)}/history`);
+    if (hist.length === 0) {
+      list.innerHTML = '<li class="empty">(尚無歷史副本;存一次檔就會出現)</li>';
+      return;
+    }
+    list.innerHTML = '';
+    for (const ts of hist) {
+      const li = document.createElement('li');
+      li.textContent = formatHistoryStamp(ts);
+      list.appendChild(li);
+    }
+  } catch {
+    list.innerHTML = '<li class="empty">(無法讀取歷史副本)</li>';
+  }
+}
+
+async function saveFromModal() {
+  await save();
+  closeModal('save-modal');
+}
+
+/** 20260616-153012 → 2026-06-16 15:30:12 */
+function formatHistoryStamp(ts: string): string {
+  const m = ts.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/);
+  return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : ts;
+}
+
+// ---------- Export PNG / Render modal(唯讀示意:變數表 + YAML + CLI;與 mockup 誠實一致)----------
+function openExportModal() {
+  renderExportVars();
+  openModal('export-modal');
+}
+
+function renderExportVars() {
+  const vars = scanVars(scene());
+  const tbody = $('#export-vars');
+  if (vars.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="3" style="color:var(--muted)">(尚無綁定變數;在屬性面板開「綁定變數」)</td></tr>';
+    renderExportPreview();
+    return;
+  }
+  tbody.innerHTML = vars
+    .map(
+      (v) =>
+        `<tr><td>{${escapeHtml(v.var)}}</td><td>${v.type}</td>` +
+        `<td><input data-export-var="${escapeHtml(v.var)}" type="text" placeholder="設計時值:${escapeHtml(v.locations[0]?.designValue ?? '')}"></td></tr>`,
+    )
+    .join('');
+  tbody.querySelectorAll('input[data-export-var]').forEach((inp) => inp.addEventListener('input', renderExportPreview));
+  renderExportPreview();
+}
+
+/** 依目前填值重算 YAML / CLI / 缺值警告 */
+function renderExportPreview() {
+  const vars = scanVars(scene());
+  const filled: Record<string, string> = {};
+  const missing: string[] = [];
+  $('#export-vars')
+    .querySelectorAll<HTMLInputElement>('input[data-export-var]')
+    .forEach((inp) => {
+      const name = inp.dataset.exportVar!;
+      const val = inp.value.trim();
+      if (val) filled[name] = val;
+      else missing.push(name);
+      const tr = inp.closest('tr');
+      if (tr) tr.classList.toggle('missing', !val);
+    });
+
+  // YAML
+  $('#export-yaml').textContent =
+    vars.length === 0
+      ? '# (無變數)'
+      : vars
+          .map((v) => `${v.var}: ${filled[v.var] !== undefined ? yamlScalar(filled[v.var]!) : '   # 缺值 → 沿用設計時值'}`)
+          .join('\n');
+
+  // CLI
+  const strict = ($('#strict-toggle') as HTMLInputElement).checked;
+  $('#export-cli').textContent =
+    `tedit render templates/${templateName}.template.json data.yaml -o ${templateName}.png` + (strict ? ' --strict' : '');
+
+  // 缺值警告(--strict 改變文案:沿用 ↔ exit 4 中止,對應 US-5)
+  const warn = $('#export-warn');
+  if (missing.length === 0) {
+    warn.textContent = '所有變數已填 → 出圖 exit 0。';
+    warn.className = '';
+    warn.style.color = 'var(--muted)';
+  } else if (strict) {
+    warn.style.color = '';
+    warn.className = 'warn-strict';
+    warn.textContent = `--strict:缺 ${missing.length} 個變數(${missing.join(', ')})→ 中止,exit 4。`;
+  } else {
+    warn.style.color = '';
+    warn.className = 'warn-keep';
+    warn.textContent = `缺 ${missing.length} 個變數(${missing.join(', ')})→ 沿用設計時值並警告,exit 0。`;
+  }
+}
+
+/** YAML 純量:單純字串直接出,含特殊字元用 JSON 風格雙引號(YAML 相容) */
+function yamlScalar(s: string): string {
+  return /^[\w./@:-]+$/.test(s) ? s : JSON.stringify(s);
 }
 
 void init().catch((e) => {

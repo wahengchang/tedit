@@ -92,6 +92,27 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     return;
   }
 
+  // GET /api/templates/:name/history(U1:Save modal 列歷史副本;唯讀,D10 寫入不變)
+  const histMatch = urlPath.match(/^\/api\/templates\/([^/]+)\/history$/);
+  if (histMatch && req.method === 'GET') {
+    const name = decodeURIComponent(histMatch[1]!);
+    if (!SAFE_NAME.test(name)) {
+      send(res, 400, JSON.stringify({ error: '模板名只允許字母數字、-、_、CJK' }));
+      return;
+    }
+    const histDir = path.join(PROJECT_DIR, '.tedit', 'history');
+    const prefix = `${name}.`;
+    const stamps = existsSync(histDir)
+      ? (await readdir(histDir))
+          .filter((f) => f.startsWith(prefix) && f.endsWith('.json'))
+          .map((f) => f.slice(prefix.length, -'.json'.length))
+          .sort()
+          .reverse() // 最新在上(時間戳字典序 = 時間序)
+      : [];
+    send(res, 200, JSON.stringify(stamps));
+    return;
+  }
+
   // GET / PUT /api/templates/:name
   const tplMatch = urlPath.match(/^\/api\/templates\/([^/]+)$/);
   if (tplMatch) {

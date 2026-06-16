@@ -5,17 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>tedit 編輯器</title>
   <style>
-    /* D20:深色專業風(Figma 風) */
+    /* D20:深色專業風(Figma 風);U1:依 draft-ui mockup 補齊工具列/狀態列/modal */
     :root {
       --bg: #1e1e1e; --panel: #252526; --border: #3a3a3a;
       --text: #dddddd; --muted: #888888; --accent: #4a9eff; --canvas-bg: #141414;
+      --dot: #2b2b2b;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body {
       background: var(--bg); color: var(--text);
       font: 13px/1.5 system-ui, "Noto Sans TC", sans-serif;
-      display: grid; grid-template-rows: 44px 1fr; height: 100vh; overflow: hidden;
+      /* U1:三列 = 工具列 / 主體 / 狀態列 */
+      display: grid; grid-template-rows: 44px 1fr 26px; height: 100vh; overflow: hidden;
     }
     /* 工具列 */
     #toolbar {
@@ -30,7 +32,25 @@
     }
     #toolbar button:hover { background: #3c3c3c; }
     #toolbar .spacer { flex: 1; }
-    #toolbar .tpl { color: var(--muted); }
+    /* 模板名 chip(可點 → Save/history modal) */
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font: inherit; color: var(--text); background: #2c2c2c; border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .chip:hover { background: #353535; }
+    .chip .k { color: var(--muted); }
+    /* zoom 控制 */
+    #zoom-ctl { display: inline-flex; align-items: center; gap: 2px; }
+    #zoom-ctl button { padding: 4px 9px; min-width: 28px; }
+    #zoom-pct {
+      min-width: 52px; text-align: center; cursor: pointer; color: var(--text);
+      background: #2c2c2c; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px;
+    }
+    #zoom-pct:hover { background: #353535; }
+    /* 變數 chip */
+    #var-chip .n { color: var(--accent); font-weight: 700; }
+    #export-btn { background: #2c2c2c; }
     #save-btn { background: var(--accent); border-color: var(--accent); color: #fff; }
     /* 三欄主體 */
     #main { display: grid; grid-template-columns: 200px 1fr 240px; min-height: 0; }
@@ -52,11 +72,17 @@
     .layer-icon { width: 16px; text-align: center; color: var(--accent); }
     .layer-id { color: var(--text); }
     .empty { color: var(--muted); padding: 8px 12px; font-style: italic; }
-    /* 畫布區 */
+    /* 畫布區(dot-grid 工作區,可捲動) */
     #canvas-wrap {
-      background: var(--canvas-bg); overflow: auto; display: grid; place-items: center;
+      background: var(--canvas-bg);
+      background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px);
+      background-size: 22px 22px;
+      overflow: auto; display: grid; place-items: center;
     }
-    #stage { box-shadow: 0 4px 24px rgba(0,0,0,.5); position: relative; }
+    #stage {
+      box-shadow: 0 4px 24px rgba(0,0,0,.5); position: relative;
+      transform-origin: top left; /* U1:zoom 用 fabric setZoom,此處僅定位錨點 */
+    }
     /* 綁定角標(S04;UI 覆蓋層,不進場景) */
     #badge-layer { position: absolute; inset: 0; pointer-events: none; }
     .badge {
@@ -84,6 +110,68 @@
     .bind-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--accent); }
     .bind-toggle input { width: auto; }
     .bind-box .prop { padding: 8px 0 0; }
+    /* 狀態列 */
+    #statusbar {
+      display: flex; align-items: center; gap: 14px; padding: 0 12px;
+      background: var(--panel); border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden;
+    }
+    #statusbar .sep { color: #444; }
+    #statusbar .wysiwyg { color: var(--accent); }
+    #statusbar #status-sel { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+    #statusbar .spacer { flex: 1; }
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      width: min(640px, 92vw); max-height: 86vh; overflow: auto;
+      box-shadow: 0 12px 48px rgba(0,0,0,.6);
+    }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .modal-head h3 { margin: 0; font-size: 15px; }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 16px 18px; }
+    .modal-body label.row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .modal-body input[type=text] {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 8px; flex: 1;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .modal-actions button {
+      font: inherit; color: var(--text); background: #333; border: 1px solid var(--border);
+      padding: 7px 16px; border-radius: 6px; cursor: pointer;
+    }
+    .modal-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .hist-list { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--border); }
+    .hist-list li { padding: 7px 2px; border-bottom: 1px solid #303030; color: var(--text); font-variant-numeric: tabular-nums; }
+    .hist-list .empty { padding: 10px 2px; }
+    .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 0 6px; }
+    table.vars { width: 100%; border-collapse: collapse; }
+    table.vars th, table.vars td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #303030; font-size: 12px; }
+    table.vars th { color: var(--muted); font-weight: 600; }
+    table.vars input {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 4px; padding: 3px 6px; width: 100%;
+    }
+    table.vars .missing td { color: #e0a030; }
+    pre.code {
+      background: #161616; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 12px; overflow: auto; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+      color: #cfcfcf; white-space: pre; margin: 0;
+    }
+    .strict-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; cursor: pointer; }
+    .strict-row input { width: auto; }
+    #export-warn { font-size: 12px; margin-top: 6px; }
+    .warn-keep { color: #e0a030; }
+    .warn-strict { color: #e06060; }
   </style>
 </head>
 <body>
@@ -100,7 +188,16 @@
       <button id="del-btn" title="刪除選取 (Delete)">刪除</button>
     </div>
     <span class="spacer"></span>
-    <span class="tpl">模板：<span id="tpl-name">…</span></span>
+    <button id="tpl-chip" class="chip" title="存檔與歷史副本 (Cmd/Ctrl+S 為快速存檔)">
+      <span class="k">模板</span><span id="tpl-name">…</span>
+    </button>
+    <div id="zoom-ctl">
+      <button id="zoom-out" title="縮小">−</button>
+      <button id="zoom-pct" title="點一下回 100%(再點：符合視窗)">100%</button>
+      <button id="zoom-in" title="放大">＋</button>
+    </div>
+    <button id="var-chip" class="chip" title="變數 / 出圖">{ } <span class="n" id="var-count">0</span></button>
+    <button id="export-btn">Export PNG</button>
     <button id="save-btn">存檔</button>
   </div>
   <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
@@ -117,6 +214,56 @@
       <div id="props-body"></div>
     </aside>
   </div>
+  <div id="statusbar">
+    <span id="status-path">—</span>
+    <span class="sep">·</span>
+    <span class="wysiwyg">編輯器所見 ＝ CLI 出圖</span>
+    <span class="sep">·</span>
+    <span id="status-sel">未選取</span>
+    <span class="spacer"></span>
+    <span id="status-zoom">100%</span>
+  </div>
+
+  <!-- Save / history modal(模板名 chip 開) -->
+  <div id="save-modal" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>存檔 · 歷史副本</h3>
+        <button class="modal-close" data-close="save-modal">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="row"><span>模板名</span><input id="save-name" type="text" readonly></label>
+        <div class="modal-actions">
+          <button data-close="save-modal">取消</button>
+          <button id="save-confirm" class="primary">存檔</button>
+        </div>
+        <div class="section-label">歷史副本(每次存檔自動快照,最新在上)</div>
+        <ul id="history-list" class="hist-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export PNG / Render modal(Export 鈕 / 變數 chip 開) -->
+  <div id="export-modal" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>Export PNG · 變數出圖</h3>
+        <button class="modal-close" data-close="export-modal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-label">變數(來自綁定;填入要套用的值)</div>
+        <table class="vars"><thead><tr><th>變數</th><th>型別</th><th>值</th></tr></thead>
+          <tbody id="export-vars"></tbody></table>
+        <label class="strict-row"><input type="checkbox" id="strict-toggle"><span>--strict(缺值即中止,exit 4)</span></label>
+        <div id="export-warn"></div>
+        <div class="section-label">data.yaml</div>
+        <pre class="code" id="export-yaml"></pre>
+        <div class="section-label">CLI 指令</div>
+        <pre class="code" id="export-cli"></pre>
+      </div>
+    </div>
+  </div>
+
   <!-- engine.bundle 先載(設定 window.teditEngine),editor.bundle 後載 -->
   <script src="/__tedit/engine.bundle.js"></script>
   <script src="/__tedit/editor.bundle.js"></script>
