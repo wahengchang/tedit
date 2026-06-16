@@ -1,4 +1,4 @@
-# explain/examples/ — 各契約的實際範例檔
+# docs/interface-examples/ — 各契約的實際範例檔
 
 對應 ../interfaces.md 的章節。✅ 是現有格式,❓ 是待你拍板的提案。
 

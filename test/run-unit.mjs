@@ -107,5 +107,26 @@ const baseScene = () => ({
   check('同名變數型別衝突 → 驗證失敗', res.ok === false && res.errors.some((e) => e.message.includes('型別衝突')));
 }
 
+// 9. validate:html 元素類型(D22 全圖層階段 1)
+{
+  const htmlEl = { id: 'h', type: 'html', x: 0, y: 0, width: 400, height: 300, rotation: 0, src: 'assets/html/bg.html' };
+  const ok = { teditVersion: '0.1', canvas: { width: 800, height: 600, background: '#fff' }, elements: [htmlEl], bindings: [] };
+  check('html 元素合法 → 通過', validateTemplate(ok).ok === true);
+
+  const noSrc = structuredClone(ok);
+  delete noSrc.elements[0].src;
+  const r1 = validateTemplate(noSrc);
+  check('html 缺 src → 失敗', r1.ok === false && r1.errors.some((e) => e.path.includes('src')));
+
+  const badField = structuredClone(ok);
+  badField.elements[0].fill = '#000';
+  const r2 = validateTemplate(badField);
+  check('html 多出未知欄位 → 失敗(嚴格)', r2.ok === false && r2.errors.some((e) => e.path.includes('fill')));
+
+  const noH = structuredClone(ok);
+  delete noH.elements[0].height;
+  check('html 缺 height → 失敗', validateTemplate(noH).ok === false);
+}
+
 console.error(failures === 0 ? '\n單元測試全部通過' : `\n單元測試 ${failures} 項失敗`);
 process.exit(failures === 0 ? 0 : 1);

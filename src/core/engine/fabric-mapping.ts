@@ -2,7 +2,7 @@
 // 來源:M0 spike 勝方原型(S01/D13),粗糙版,M1 整理。
 
 import { Canvas, StaticCanvas, Rect, Ellipse, Line, Textbox, FabricImage, FabricObject } from 'fabric';
-import type { Template, SceneElement, TextElement, ImageElement, ShapeElement } from '../scene/types.js';
+import type { Template, SceneElement, TextElement, ImageElement, ShapeElement, HtmlElement } from '../scene/types.js';
 import { decodeImage } from './gate.js';
 
 // fabric 行高含內部 _fontSizeMult=1.13 係數;schema lineHeight 是純倍數,映射層吸收。
@@ -28,6 +28,8 @@ interface TeditMeta {
   /** 載入時 applyFit 設定的 scale;save 以 scaleX/teditLoadScaleX 還原使用者縮放倍率 */
   teditLoadScaleX?: number;
   teditLoadScaleY?: number;
+  /** html 元素的內容(編輯器用佔位框表示;save 原樣保留,不入畫布渲染) */
+  teditHtml?: string;
 }
 
 export async function load(canvas: AnyCanvas, scene: Template, assetBase: string): Promise<void> {
@@ -41,13 +43,42 @@ export async function load(canvas: AnyCanvas, scene: Template, assetBase: string
   }
 
   for (const el of scene.elements) {
-    const obj = await elementToObject(el, assetBase);
+    // 編輯器單 canvas:html 以佔位框表示(可拖/縮放/正確 z-order;真內容在 headless 出圖)
+    const obj = el.type === 'html' ? htmlPlaceholder(el) : await elementToObject(el, assetBase);
     canvas.add(obj);
   }
   canvas.renderAll();
 }
 
-async function elementToObject(el: SceneElement, assetBase: string): Promise<FabricObject> {
+/** html 元素 → 畫布上的佔位框(虛線 + 標籤);內容存 meta,save 原樣保留 */
+function htmlPlaceholder(el: HtmlElement): FabricObject {
+  const meta: TeditMeta = { teditId: el.id, teditType: 'html' };
+  if (typeof el.src === 'string') meta.teditSrc = el.src;
+  if (typeof el.html === 'string') meta.teditHtml = el.html;
+  const rect = new Rect({
+    originX: 'center',
+    originY: 'center',
+    left: el.x + el.width / 2,
+    top: el.y + el.height / 2,
+    width: el.width,
+    height: el.height,
+    angle: el.rotation,
+    fill: 'rgba(120,120,140,0.18)',
+    stroke: '#8a8aa0',
+    strokeWidth: 1,
+    strokeDashArray: [6, 4],
+    strokeUniform: true,
+  });
+  rect.set(meta as unknown as Record<string, unknown>);
+  return rect;
+}
+
+/** schema 元素 → fabric 物件(單一元素;合成器逐層用,故 export)。html 不走 fabric。 */
+export async function elementToObject(el: SceneElement, assetBase: string): Promise<FabricObject> {
+  // html 元素由「多層合成器」用 iframe 渲染(D22),不走 fabric 物件(合成器路徑會跳過此函式)。
+  if (el.type === 'html') {
+    throw new Error('html 元素不走 fabric(由合成器以 iframe 渲染)');
+  }
   const meta: TeditMeta = { teditId: el.id, teditType: el.type };
 
   if (el.type === 'shape') {
@@ -185,7 +216,12 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
       rotation: round(m.angle),
     };
 
-    if (m.teditType === 'shape') {
+    if (m.teditType === 'html') {
+      const htmlEl: HtmlElement = { ...base, type: 'html', width: dispW, height: dispH };
+      if (m.teditHtml !== undefined) htmlEl.html = m.teditHtml;
+      else htmlEl.src = m.teditSrc!;
+      out.elements.push(htmlEl);
+    } else if (m.teditType === 'shape') {
       out.elements.push({
         ...base,
         type: 'shape',

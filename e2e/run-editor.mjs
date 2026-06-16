@@ -160,6 +160,37 @@ try {
   const s12 = await saveAndRead();
   check('bindings 已移除 txt1(photo 綁定保留)', !s12.bindings.some((b) => b.element === 'txt1') && s12.bindings.some((b) => b.element === 'img1'));
 
+  // 13. D22:新增 html 圖層(佔位框)→ 屬性面板貼代碼 → 存檔含 inline html(可再 CLI render)
+  const beforeHtml = await layerCount2();
+  await page.locator('#add-html').click();
+  await page.waitForTimeout(200);
+  check('新增 html 圖層 → 圖層 +1', (await layerCount2()) === beforeHtml + 1, `count=${await layerCount2()}`);
+  // 新增後自動選取 html;屬性面板出現「貼上整段」textarea
+  const htmlArea = page.locator('#props-body textarea[data-k="html"]');
+  check('html 屬性面板出現貼上框', (await htmlArea.count()) === 1);
+  await htmlArea.fill('<div style="background:#0a0">PASTED-HTML</div>');
+  await htmlArea.dispatchEvent('change');
+  await page.waitForTimeout(200);
+  const s13 = await saveAndRead();
+  const h = s13.elements.find((e) => e.type === 'html');
+  check('存檔含 html 元素且帶 inline 代碼', !!h && typeof h.html === 'string' && h.html.includes('PASTED-HTML'), JSON.stringify(h && { type: h.type, hasHtml: !!h.html }));
+  check('html 元素有正確 box 欄位', !!h && [h.x, h.y, h.width, h.height].every((v) => typeof v === 'number'));
+
+  // 14. 含 html 的存檔模板 → CLI 直接 render(端到端)
+  {
+    const cliOut = path.join(work, 'editor-html.png');
+    const { execFileSync } = await import('node:child_process');
+    let code = 0;
+    try {
+      execFileSync(process.execPath, [
+        path.join(ROOT, 'dist', 'cli', 'index.js'), 'render',
+        path.join(work, 'templates', 'card.template.json'),
+        path.join(work, 'data', 'empty.yaml'), '-o', cliOut,
+      ], { stdio: 'ignore' });
+    } catch { code = 1; }
+    check('編輯器存出(含 html)的模板 → CLI render exit 0', code === 0 && existsSync(cliOut));
+  }
+
   check('無 page error', errs.length === 0, errs.join(' | '));
 } catch (e) {
   failures++;

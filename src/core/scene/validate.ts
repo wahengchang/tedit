@@ -25,6 +25,7 @@ const KEYS_BY_TYPE: Record<string, string[]> = {
   text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'color', 'align', 'lineHeight'],
   image: [...BASE_KEYS, 'width', 'height', 'src', 'fit'],
   shape: [...BASE_KEYS, 'width', 'height', 'shape', 'fill', 'stroke', 'strokeWidth'],
+  html: [...BASE_KEYS, 'width', 'height', 'src', 'html'],
 };
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -112,8 +113,8 @@ function validateElement(
   }
 
   const type = el.type;
-  if (type !== 'text' && type !== 'image' && type !== 'shape') {
-    err(at('type'), '必須是 "text" | "image" | "shape"');
+  if (type !== 'text' && type !== 'image' && type !== 'shape' && type !== 'html') {
+    err(at('type'), '必須是 "text" | "image" | "shape" | "html"');
     return;
   }
 
@@ -151,6 +152,13 @@ function validateElement(
     if (typeof el.stroke !== 'string') err(at('stroke'), '必須是 CSS 色值字串或 "transparent"');
     if (!isFiniteNumber(el.strokeWidth) || (el.strokeWidth as number) < 0)
       err(at('strokeWidth'), '必須是 >= 0 的數字');
+  } else if (type === 'html') {
+    const hasSrc = typeof el.src === 'string' && el.src.length > 0;
+    const hasHtml = typeof el.html === 'string' && el.html.length > 0;
+    if (hasSrc === hasHtml)
+      err(at('src'), 'html 元素須剛好擇一:src(本地檔路徑)或 html(內嵌代碼)');
+    if (el.src !== undefined && typeof el.src !== 'string') err(at('src'), 'src 必須是字串');
+    if (el.html !== undefined && typeof el.html !== 'string') err(at('html'), 'html 必須是字串');
   }
 }
 

@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成 🔨 進行中
-> 更新時間:2026-06-15(M0–M4 收官;M5 進行中:端到端 parity ✅ + woff2 內建字 ✅)
+> 更新時間:2026-06-16(M0–M4 收官;M5 進行中;全圖層重構 D22 階段 1–4 完成,HTML 圖層端到端可用)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -116,12 +116,22 @@ tedit/
 
 ### 全圖層重構(D22,M6 大項)🔨 進行中(branch: feature/layer-compositor)
 - ✅ spike 通過:三層交錯(矩形<iframe<文字)+ 跨 document 守門,兩次渲染 diff=0(spike/run-compositor.mjs)
-- 🔨 正式重構(strangler 漸進;explain/layer-compositor-impact.md §1 影響地圖):
-  - 階段 1:schema 加 iframe 元素類型(types/validate + 測試)← 進行中
-  - 階段 2:合成器骨架(browser-entry 改多層)
-  - 階段 3:映射層改逐層(每元素一 canvas + iframe 層)
-  - 階段 4:editor 互動(最大塊)
-  - 階段 5:headless 守門 + 測試 harness(parity 含 iframe 樣本)
+- 🔨 正式重構(strangler 漸進;docs/decisions/D22-layer-compositor.md §1 影響地圖):
+  - ✅ 階段 1:schema 加 html 元素類型(types/validate + 4 斷言;映射層擋 html)
+  - ✅ 階段 2:合成器核心模組 core/engine/compositor.ts(每元素一 StaticCanvas + iframe 層;
+        跨 document 守門 sandbox=allow-same-origin)。與舊單 canvas 並存(window.teditEngine.renderLayers)。
+        測試(e2e/run-compositor-parity.mjs):三層交錯連渲 diff=0、html 有畫、**且 compositor == 舊單 canvas diff=0**(切換零風險)
+  - ✅ 階段 3:CLI headless 出圖切到 compositor(render-png.ts)→ `tedit render` 能出 html 圖層模板
+        (examples/demo/html-card + assets/html/panel.html;e2eCli 驗 exit0+尺寸;實渲三層交錯正確)
+  - ✅ 階段 4(**佔位框法 / 決議走 C**):編輯器可編 html 圖層。html 在畫布上=可拖/縮放的佔位框
+        (只是普通 Rect,故 z-order 正確、IText 行內編輯保留);屬性面板**貼整段 HTML 代碼**(inline)
+        或顯示本地檔來源;存檔原樣保留。真內容在 headless 出圖時渲染。
+        schema 支援 inline html(srcdoc)/src(檔)擇一;fabric-mapping 佔位框 load/save;＋HTML 按鈕。
+        測試:單元(src XOR html)、e2eCli(html render)、editor e2e(加 html→貼碼→存→CLI render)。
+  - (可選)編輯器內「即時 html 預覽」:目前顯示佔位框,真內容出圖才見。要即時預覽才需 compositor-editor
+        (proxy-overlay,會犧牲 IText)——使用者工作流是「貼好代碼出圖」,故非必要。
+
+**目前可用度**:v1 + **HTML 圖層端到端可用**——編輯器加 html 層 + 貼代碼 + 定位,`tedit render` 出像素精準 PNG。
 
 ### M6 — 擴充背包 ❌(不承諾順序)
 - ❌ undo/redo、群組、輔助線吸附、--keep-alive、URL 圖片變數、

@@ -11,7 +11,7 @@ import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
-const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇' };
+const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇', html: '◧' };
 
 let handle: EngineHandle;
 let config: ProjectConfig;
@@ -56,10 +56,11 @@ async function init() {
   const wanted = new URLSearchParams(location.search).get('template');
   templateName = wanted && names.includes(wanted) ? wanted : (names[0] ?? 'untitled');
 
-  handle = window.teditEngine.boot('edit', $('#stage'));
   const initial = names.includes(templateName)
     ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
     : blankScene(config);
+
+  handle = window.teditEngine.boot('edit', $('#stage'));
   await handle.loadScene(initial, fontReg, '/');
 
   // 綁定角標層(S04:僅 UI 覆蓋,不進場景);#stage position:relative,inset 對齊畫布
@@ -171,11 +172,19 @@ function renderProps() {
   } else if (el.type === 'image') {
     html += `<div class="prop"><span>來源</span><b>${el.src}</b></div>`;
     html += selF('裁切', 'fit', el.fit, ['cover', 'contain', 'stretch']);
-  } else {
+  } else if (el.type === 'shape') {
     html += selF('形狀', 'shape', el.shape, ['rect', 'ellipse', 'line']);
     html += colorF('填色', 'fill', el.fill);
     html += colorF('描邊', 'stroke', el.stroke);
     html += numF('描邊寬', 'strokeWidth', el.strokeWidth);
+  } else {
+    // html 元素(D22):佔位框在畫布上可拖/縮放;內容在此貼上(inline)或顯示檔案來源
+    if (typeof el.src === 'string') {
+      html += `<div class="prop"><span>HTML 檔</span><b>${el.src}</b></div>`;
+    } else {
+      html += `<label class="prop col"><span>HTML 代碼(貼上整段)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
+    }
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">內容在出圖時渲染;畫布上顯示佔位框</small></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
@@ -297,6 +306,7 @@ function wireToolbar() {
   $('#add-text').onclick = () => void addText();
   $('#add-shape').onclick = () => void addShape();
   $('#add-image').onclick = () => $('#file-input').click();
+  $('#add-html').onclick = () => void addHtml();
   $('#del-btn').onclick = () => void deleteSelected();
   $('#dup-btn').onclick = () => void duplicateSelected();
   ($('#file-input') as HTMLInputElement).addEventListener('change', (e) => {
@@ -324,6 +334,17 @@ async function addShape() {
   s.elements.push({
     id, type: 'shape', shape: 'rect', x: 100, y: 100, width: 300, height: 200,
     rotation: 0, fill: '#4a9eff', stroke: 'transparent', strokeWidth: 0,
+  });
+  await commit(s, id);
+}
+
+async function addHtml() {
+  // 新增一個 html 圖層(佔位框);預設內嵌一段可立刻貼換的代碼
+  const s = scene();
+  const id = genId(s);
+  s.elements.push({
+    id, type: 'html', x: 120, y: 120, width: 400, height: 240, rotation: 0,
+    html: '<div style="font:24px system-ui;padding:20px;color:#fff;background:#333">貼上你的 HTML</div>',
   });
   await commit(s, id);
 }

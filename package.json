@@ -15,12 +15,13 @@
     "ui:demo": "npm run build && node scripts/ui.mjs examples/demo",
     "tedit": "npm run build && node dist/cli/index.js",
     "render:demo": "npm run build && bash examples/demo/render-all.sh",
-    "test": "npm run build && npm run test:unit && npm run test:parity && npm run test:cli && npm run test:editor && npm run test:e2e",
+    "test": "npm run build && npm run test:unit && npm run test:parity && npm run test:cli && npm run test:editor && npm run test:e2e && npm run test:compositor",
     "test:unit": "node test/run-unit.mjs",
     "test:parity": "node e2e/run-parity.mjs",
     "test:cli": "node e2eCli/run-cli.mjs",
     "test:editor": "node e2e/run-editor.mjs",
     "test:e2e": "node e2e/run-e2e.mjs",
+    "test:compositor": "node e2e/run-compositor-parity.mjs",
     "spike": "node spike/run-spike.mjs"
   },
   "engines": {

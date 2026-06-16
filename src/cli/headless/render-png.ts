@@ -93,8 +93,8 @@ export async function renderScenePng(opts: RenderOptions): Promise<Buffer> {
     try {
       await page.evaluate(
         async ({ scene, fonts }) => {
-          const handle = window.teditEngine.boot('view', document.getElementById('stage')!);
-          await handle.loadScene(scene, fonts, '/');
+          // D22 階段 3:headless 出圖改走多層合成器(支援 html 層;非-html 與舊單 canvas 同像素)
+          await window.teditEngine.renderLayers(document.getElementById('stage')!, scene, fonts, '/');
         },
         { scene: opts.scene, fonts: opts.fontRegistry },
       );

@@ -1,8 +1,8 @@
-# tedit 模塊接口資料結構 + 範例(explain-interfaces.md)
+# tedit 模塊接口資料結構 + 範例(interfaces.md)
 
 > 用途:把「模塊之間交互的資料結構」配上**實際範例**,方便溝通,並把幾件
 > **不確定/複雜的事**用具體例子釘下來給你拍板。
-> 看不懂的回頭對照:explain.md(全貌)、docs/OVERVIEW-VISUAL.md(圖)。
+> 對照:OVERVIEW-VISUAL.md(全貌與圖)、mapping-table.md(映射層轉換);範例在 interface-examples/。
 >
 > 圖例:✅ 已實作可用    ❓ 待你確認(提案,尚未實作)
 
@@ -166,7 +166,7 @@ PUT /api/templates/card  ───────▶ server 驗證 + 寫檔 + histo
 | POST | `/api/assets/images?name=檔名` | 圖片 binary | `200` `{ "path": "assets/images/檔名" }` | `400` `{ error }` |
 
 > PUT 會先跑 `validateTemplate` 才寫檔(server 端守 schema),並同步寫一份 history 副本。
-> 完整 request/response body 範例見 `examples/4-rest-api.md`。
+> 完整 request/response body 範例見 `interface-examples/4-rest-api.md`。
 
 ---
 
