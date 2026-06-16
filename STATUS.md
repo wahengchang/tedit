@@ -1,7 +1,7 @@
 # tedit 進度總覽(STATUS)
 
 > 標記:✅ 完成 ❌ 未完成 🔨 進行中
-> 更新時間:2026-06-15(M0–M4 收官;M5 進行中:端到端 parity ✅ + woff2 內建字 ✅)
+> 更新時間:2026-06-16(M0–M4 收官;M5 進行中;全圖層重構 D22 階段 1–4 完成,HTML 圖層端到端可用)
 > 詳細規格見 docs/,決議見 docs/decisions/
 
 ---
@@ -123,14 +123,15 @@ tedit/
         測試(e2e/run-compositor-parity.mjs):三層交錯連渲 diff=0、html 有畫、**且 compositor == 舊單 canvas diff=0**(切換零風險)
   - ✅ 階段 3:CLI headless 出圖切到 compositor(render-png.ts)→ `tedit render` 能出 html 圖層模板
         (examples/demo/html-card + assets/html/panel.html;e2eCli 驗 exit0+尺寸;實渲三層交錯正確)
-  - ✅ 階段 4 守衛:編輯器遇 html 模板友善擋下(不崩潰、不掉資料),指引用 CLI 出圖
-  - ⬜ 階段 4 正式(editor WYSIWYG html 編輯):**interaction 子重寫**。單 canvas 無法把 iframe 夾在
-        fabric 元素之間 → 需「每元素一互動 canvas」或「隱形 proxy 疊層」;代價=失去 IText 行內編輯,
-        且要重寫 editor.ts + run-editor.mjs。高 blast radius(動到能跑的 M4 編輯器),不宜倉促。
-  - ⬜ 階段 5:editor 上 compositor 後,parity 兩邊都走 compositor(含 html 樣本)+ --scale @2x 驗
+  - ✅ 階段 4(**佔位框法 / 決議走 C**):編輯器可編 html 圖層。html 在畫布上=可拖/縮放的佔位框
+        (只是普通 Rect,故 z-order 正確、IText 行內編輯保留);屬性面板**貼整段 HTML 代碼**(inline)
+        或顯示本地檔來源;存檔原樣保留。真內容在 headless 出圖時渲染。
+        schema 支援 inline html(srcdoc)/src(檔)擇一;fabric-mapping 佔位框 load/save;＋HTML 按鈕。
+        測試:單元(src XOR html)、e2eCli(html render)、editor e2e(加 html→貼碼→存→CLI render)。
+  - (可選)編輯器內「即時 html 預覽」:目前顯示佔位框,真內容出圖才見。要即時預覽才需 compositor-editor
+        (proxy-overlay,會犧牲 IText)——使用者工作流是「貼好代碼出圖」,故非必要。
 
-**目前可用度**:author html 圖層模板 + `tedit render` 出像素精準 PNG = **完整可用**(核心產品價值)。
-編輯器 WYSIWYG 編輯 html = 待階段 4 正式(已 de-risk:spike+compositor 已證、proxy-overlay 設計已記)。
+**目前可用度**:v1 + **HTML 圖層端到端可用**——編輯器加 html 層 + 貼代碼 + 定位,`tedit render` 出像素精準 PNG。
 
 ### M6 — 擴充背包 ❌(不承諾順序)
 - ❌ undo/redo、群組、輔助線吸附、--keep-alive、URL 圖片變數、

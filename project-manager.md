@@ -1,7 +1,7 @@
 # tedit 專案管理總表(project-manager.md)
 
 > 一頁看完:**主要模組結構（每個標完成狀態）** + **工作進度看板（每項標狀態）**。
-> 更新:2026-06-16 · 分支:`feature/layer-compositor`(全圖層重構中;`main` 為穩定 v1)
+> 更新:2026-06-16(全圖層 階段 1–4 完成)· 分支:`feature/layer-compositor`(`main` 為穩定 v1)
 > 工程細節見 `STATUS.md`;決議見 `docs/README-HANDOVER.md §4`;圖見 `docs/OVERVIEW-VISUAL.md`。
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🛡️ 暫行守衛(非正式)　⏳ 等人工/外部
@@ -21,8 +21,8 @@ tedit/
 │   └── engine/        渲染引擎(fabric v7,只跑瀏覽器)
 │       ├── fabric-mapping.ts  映射層 load/save(往返測試看守 D12)... ✅
 │       ├── gate.ts            渲染守門(fonts.ready + 圖片 decode)... ✅
-│       ├── browser-entry.ts   bundle 入口(boot 單canvas + 編輯器API)✅
-│       └── compositor.ts      多層合成器(每元素一層 + iframe).......🔨(view 已用;editor 未用)
+│       ├── browser-entry.ts   bundle 入口(boot 單canvas + 編輯器API + renderLayers)✅
+│       └── compositor.ts      多層合成器(每元素一層 + iframe;CLI 出圖用).......✅
 ├── cli/  指令層(tedit ui/render/vars;退出碼 0–5)
 │   ├── index.ts            argv + 退出碼 ......................... ✅
 │   ├── shared.ts           模板載入/專案定位/CliError ............ ✅
@@ -34,7 +34,7 @@ tedit/
 │   ├── server.ts           薄後端(REST 5 端點+上傳+history)..... ✅
 │   └── ui/
 │       ├── index.html      深色編輯器殼(D20)................... ✅
-│       ├── editor.ts       編輯器前端(M4 全功能)............... ✅ / html 模板 🛡️ 守衛(待正式)
+│       ├── editor.ts       編輯器前端(M4 全功能 + html 佔位框/貼碼).. ✅
 │       └── headless.html   headless 出圖頁 ...................... ✅
 ├── 測試 harness
 │   ├── test/run-unit.mjs        core 純函式單元 .................. ✅
@@ -47,8 +47,8 @@ tedit/
 ├── spike/                  M0 擂台 + 合成器 spike(已歸檔)....... ✅
 └── docs/ + STATUS.md + 本檔  文件 ........................... ✅
 
-模組完成度:核心 core ✅ · CLI ✅ · web/server ✅ · 編輯器 ✅(html 除外)· 測試 ✅
-            唯一進行中 = engine/compositor + editor 的 html 整合
+模組完成度:核心 core ✅ · CLI ✅ · web/server ✅ · 編輯器 ✅(含 html 圖層)· 測試 ✅
+            全圖層重構 階段 1–4 完成;v1 + HTML 圖層 已可端到端使用
 ```
 
 ---
@@ -74,25 +74,23 @@ tedit/
 | 1 | schema 加 html 元素類型(types/validate) | ✅ |
 | 2 | 合成器核心 compositor.ts(每元素一層 + iframe) | ✅ |
 | 3 | CLI 出圖切合成器 → **能 render html 模板** | ✅ |
-| 4 守衛 | 編輯器遇 html 模板友善擋下(不崩潰/不掉資料) | 🛡️ |
-| 4 正式 | 編輯器 WYSIWYG 編輯 html(互動子重寫) | ⬜ **待你拍板**(A/B/C 見 §3) |
-| 5 | parity 兩邊上合成器 + @2x 驗 | ⬜ 等階段 4 |
+| 4 | 編輯器可編 html 圖層(**佔位框法**:可拖/縮放/正確 z-order + 貼整段 HTML 代碼;保留 IText) | ✅ |
+| (可選) | 編輯器內「即時 html 預覽」(目前顯示佔位框,真內容在出圖) | ⬜ 非必要(使用者貼好代碼出圖即可) |
 
 ---
 
 ## 3. 目前狀態與待你決定
 
 **現在可用度(交付狀態)**
-- ✅ **核心產品已可用**:在 schema/JSON 描述 html 圖層 → `tedit render` 出**像素精準** PNG(三層交錯正確)。
-- ✅ 編輯器(文字/圖片/形狀)全功能可用;遇 html 模板友善擋下不崩潰。
+- ✅ **核心產品已可用**:schema 描述 html 圖層(內嵌代碼或本地檔)→ `tedit render` 出**像素精準** PNG(三層交錯正確)。
+- ✅ **編輯器可編 html 圖層**:＋HTML 加一層 → 畫布上是可拖/縮放的佔位框(z-order 正確)→ 屬性面板**貼整段 HTML 代碼** → 存檔 → CLI 出圖看真內容。文字仍保留雙擊 IText 行內編輯。
 - ⏳ 中文 IME:僅初步人工試過,待正式收尾(M5)。
 
-**待你拍板:階段 4 正式(編輯器 WYSIWYG 編輯 html)** — 有取捨:
-- **A. proxy-overlay 重寫**:html 真 WYSIWYG;代價 = 失去 IText 畫布內行內編輯(改屬性面板)。
-- **B. 每元素一互動 canvas**:保留 IText;但要解 click-through,bug 風險最高。
-- **C. 先停在這**(推薦):編輯器維持單 canvas(M4 完整、IText 保留),html 用 CLI 出圖;
-  編輯器 html 編輯留成獨立一役。
+**階段 4 決議(已定)**:走 **C(佔位框法)** — 不做 proxy-overlay 大重寫,保住 M4 單 canvas + IText;
+html 在編輯器顯示佔位框(內容出圖時渲染),貼合「準備好整段代碼貼上」的工作流。
+(若日後要「編輯器內即時 html 預覽」,才需 compositor-editor;目前非必要。)
 
 **測試品質**:`npm test` 六關全綠(unit / parity / cli / editor / e2e / compositor);lint + typecheck 乾淨。
+編輯器 e2e 已涵蓋:加 html → 貼代碼 → 存檔 → CLI render。
 
 **風險備忘**:fabric lineHeight 1.13 常數(升版要驗);英文混排斷詞(M6);無遠端 repo → CI 暫=本地 npm test。
