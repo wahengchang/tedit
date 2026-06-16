@@ -3,7 +3,7 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-16 · 在 `main`(v1 + HTML 圖層 + U1 重製 + U2 首頁 + U3 copy-paste/英文/icon + U4 快捷鍵 + U5 網頁下載 PNG,六關全綠)
+> 更新:2026-06-16 · 在 `main`(v1 + HTML 圖層 + U1 重製 + U2 首頁 + U3 copy-paste/英文/icon + U4 快捷鍵 + U5 網頁下載 PNG + U6 畫布尺寸可改,六關全綠)
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
@@ -75,6 +75,8 @@ tedit/
 | U3 | copy / cut / paste(⌘C/⌘X/⌘V,app 內剪貼簿,連續貼上階梯位移);UI 全面英文化;工具列改 inline-SVG icon(insert T/圖/方框/`</>`、duplicate、trash、export download;Save 留文字保 ✓/* 狀態與 e2e) | ✅ | `src/web/ui/` | 文字編輯態走原生剪貼簿(typing guard);六關全綠、實機驗證 copy-paste 階梯與全英文 UI |
 | U4 | 單鍵工具快捷鍵(Figma 風):T 文字 / R 矩形 / O 橢圓 / L 線 / I 圖片 / H HTML;方向鍵微調選取(1px,Shift=10px);Esc 取消選取(modal 開→關 modal、文字編輯中→交 fabric);addShape 擴充支援 rect/ellipse/line | ✅ | `src/web/ui/` | typing/modal guard 防誤觸;tooltip 標單鍵;六關全綠、實機驗證 T/R/O/L + 方向鍵微調 |
 | U5 | 網頁直接下載 PNG:Export modal 加「Download PNG」+ 倍率(1×/2×/3×);POST `/api/render` 帶目前場景+變數值+strict → **server 子行程跑 CLI render**(D01:不 import cli,出圖管線與 CLI 一致)→ 回 PNG blob 下載;exit 4(--strict 缺值)→ 422 | ✅ | 🟢 `src/web/server.ts` + `src/web/ui/` + `src/cli/render.ts` | **修**:無 `project.json` 的專案 locateProject 會 fallback 到 `.tedit/` 致圖片 404→EncodingError → 給 render 加 `--dir` 明確指定專案根,server 直接傳;curl 驗 repo 根+project1(圖片/形狀/HTML)2400×1260 OK;六關全綠 |
+
+| U6 | 畫布(文件)尺寸可改:沒選元素時右側 Properties 顯示 Canvas 面板(Width/Height/Background + 常用尺寸 preset:IG 方形/直式/Story、OG、HD);改尺寸同步更新 designW/H(zoom 正規化靠它),元素座標保留 | ✅ | `src/web/ui/` | 之前畫布大小只能靠 project.json/建檔決定,編輯器無法改;六關全綠、實機驗證改 Width 即時縮放 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 

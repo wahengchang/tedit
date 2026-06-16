@@ -237,7 +237,30 @@ function renderProps() {
   const panel = $('#props-body');
   const el = selectedElement();
   if (!el) {
-    panel.innerHTML = '<div class="empty">(nothing selected)</div>';
+    // 沒選元素 → 顯示 Canvas(文件)屬性:尺寸 + 背景 + 常用 preset
+    const c = scene().canvas;
+    const bg = typeof c.background === 'string' ? c.background : null;
+    let h = `<div class="prop-head">▭ Canvas <em>document</em></div>`;
+    h += `<label class="prop"><span>Width</span><input data-canvas="width" type="number" min="1" value="${Math.round(c.width)}"></label>`;
+    h += `<label class="prop"><span>Height</span><input data-canvas="height" type="number" min="1" value="${Math.round(c.height)}"></label>`;
+    if (bg !== null) {
+      h += `<label class="prop"><span>Background</span><input data-canvas="background" data-color="1" type="color" value="${toHex(bg)}"></label>`;
+    } else {
+      h += `<div class="prop"><span>Background</span><b>image</b></div>`;
+    }
+    const presets: [string, string][] = [
+      ['', 'Preset…'],
+      ['1080x1080', '1080×1080 · IG square'],
+      ['1080x1350', '1080×1350 · IG portrait'],
+      ['1080x1920', '1080×1920 · Story/Reel'],
+      ['1200x630', '1200×630 · OG/Twitter'],
+      ['1920x1080', '1920×1080 · HD 16:9'],
+    ];
+    h += `<label class="prop"><span>Size preset</span><select data-canvas-preset>${presets
+      .map(([v, label]) => `<option value="${v}">${label}</option>`)
+      .join('')}</select></label>`;
+    h += `<div class="prop"><span></span><small style="color:var(--muted)">Select nothing to edit the canvas</small></div>`;
+    panel.innerHTML = h;
     return;
   }
   const numF = (label: string, key: string, val: number) =>
@@ -370,6 +393,21 @@ function wireProps() {
 
 async function applyPropEdit(e: Event) {
   const input = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+  // 畫布(文件)屬性:沒選元素時編輯;先於元素分支處理
+  if (input.dataset.canvasPreset !== undefined) {
+    const [w, h] = input.value.split('x').map(Number);
+    if (w && h) await setCanvasSize(w, h);
+    return;
+  }
+  if (input.dataset.canvas) {
+    const c = scene().canvas;
+    if (input.dataset.canvas === 'width') await setCanvasSize(Number(input.value), c.height);
+    else if (input.dataset.canvas === 'height') await setCanvasSize(c.width, Number(input.value));
+    else if (input.dataset.canvas === 'background') await setCanvasBg(input.value);
+    return;
+  }
+
   const id = handle.selectedId();
   if (!id) return;
   // 綁定控制先處理
@@ -391,6 +429,26 @@ async function applyPropEdit(e: Event) {
   // 直接改 schema 欄位,reload 走映射層(origin/裁切換算由映射層負責)
   (el as unknown as Record<string, string | number>)[key] = val;
   await commit(s, id);
+}
+
+// ---------- 畫布(文件)尺寸 / 背景 ----------
+// 設計尺寸在編輯器恆定 → 改尺寸要同步更新 designW/H(zoom 正規化與 applyZoom 都靠它)
+async function setCanvasSize(w: number, hh: number) {
+  const W = Math.max(1, Math.min(10000, Math.round(w || 0)));
+  const H = Math.max(1, Math.min(10000, Math.round(hh || 0)));
+  if (!W || !H) return;
+  const s = scene();
+  s.canvas.width = W;
+  s.canvas.height = H;
+  designW = W;
+  designH = H;
+  await commit(s);
+}
+
+async function setCanvasBg(color: string) {
+  const s = scene();
+  s.canvas.background = color;
+  await commit(s);
 }
 
 // ---------- 工具列:新增 / 刪除 / 複製 ----------
