@@ -2,11 +2,8 @@ node_modules/
 dist/
 *.log
 .DS_Store
-spike/out/
-spike/out/origin-exp*
-e2e/out/
-spike/out/editor-stage1.png
-spike/out/editor-stage2.png
-spike/out/editor-stage3.png
-examples/demo/out/
 out.png
+demo-out/
+spike/out/
+e2e/out/
+examples/demo/out/
