@@ -90,7 +90,7 @@ npm run lint
 
 ## 文件
 
-- `STATUS.md` — 進度總覽(✅/❌ 檔案樹 + 里程碑)
+- `project-manager.md` — 進度真相(模組樹+里程碑+下一步看板+技術債)
 - `docs/OVERVIEW-VISUAL.md` — 全貌視覺化(流程/編輯器功能/架構/核心資料結構)
 - `docs/README-HANDOVER.md` — 交接總覽 + 決議總帳(D01–D21)
 - `docs/ARCHITECTURE.md`、`docs/SPEC-*.md` — 架構與規格合約

@@ -1,7 +1,7 @@
 # tedit 視覺化總覽(OVERVIEW-VISUAL)
 
 > 一份「用圖看懂全貌」的文件。截至 2026-06-15,M0–M4 全完成。
-> 想看文字版進度見 STATUS.md;想看決議見 docs/decisions/。
+> 想看進度見 ../project-manager.md;想看決議見 docs/decisions/。
 
 ---
 
