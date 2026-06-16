@@ -66,6 +66,54 @@ async function commit(next: Template, selectId?: string) {
   if (selectId) handle.selectById(selectId);
   markDirty();
   renderAll();
+  recordHistory();
+}
+
+// ---------- undo / redo(B1:場景快照堆疊;以 JSON 字串去重)----------
+let history: string[] = [];
+let histIndex = -1;
+let restoring = false; // 套用快照中 → 不重複記錄
+
+function recordHistory() {
+  if (restoring) return;
+  const snap = JSON.stringify(scene());
+  if (history[histIndex] === snap) return; // 無實質變化(如純選取)→ 不記
+  history = history.slice(0, histIndex + 1); // 砍掉 redo 尾巴
+  history.push(snap);
+  histIndex = history.length - 1;
+  updateHistoryButtons();
+}
+
+async function applySnapshot(snap: string) {
+  restoring = true;
+  const t = JSON.parse(snap) as Template;
+  designW = t.canvas.width; // 還原設計尺寸(canvas 尺寸也可能被 undo/redo)
+  designH = t.canvas.height;
+  await handle.loadScene(t, fontReg, '/');
+  applyZoom();
+  restoring = false;
+  markDirty();
+  renderAll();
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (histIndex <= 0) return;
+  histIndex--;
+  void applySnapshot(history[histIndex]!);
+}
+
+function redo() {
+  if (histIndex >= history.length - 1) return;
+  histIndex++;
+  void applySnapshot(history[histIndex]!);
+}
+
+function updateHistoryButtons() {
+  const u = document.getElementById('undo-btn') as HTMLButtonElement | null;
+  const r = document.getElementById('redo-btn') as HTMLButtonElement | null;
+  if (u) u.disabled = histIndex <= 0;
+  if (r) r.disabled = histIndex >= history.length - 1;
 }
 
 async function init() {
@@ -104,6 +152,11 @@ async function init() {
   handle.onChange(renderAll);
   // onChange 也在文字行內編輯後觸發 → 標記 dirty
   handle.onChange(() => markDirty());
+  // undo/redo:畫布上「拖移結束」「文字編輯結束」也要進歷史(這兩個不走 commit())
+  const canvasOn = (handle.canvas as unknown as { on(e: string, cb: () => void): void }).on.bind(handle.canvas);
+  canvasOn('object:modified', () => recordHistory());
+  canvasOn('text:editing:exited', () => recordHistory());
+  recordHistory(); // 種子:初始狀態 = history[0]
   wireToolbar();
   wireProps();
   wireKeyboard();
@@ -123,6 +176,7 @@ function renderAll() {
   renderBadges();
   renderStatus();
   renderVarChip();
+  updateHistoryButtons();
 }
 
 // ---------- zoom(純視圖;座標不變)----------
@@ -495,6 +549,8 @@ function wireToolbar() {
   $('#add-html').onclick = () => void addHtml();
   $('#del-btn').onclick = () => void deleteSelected();
   $('#dup-btn').onclick = () => void duplicateSelected();
+  $('#undo-btn').onclick = () => undo();
+  $('#redo-btn').onclick = () => redo();
   ($('#file-input') as HTMLInputElement).addEventListener('change', (e) => {
     const f = (e.target as HTMLInputElement).files?.[0];
     if (f) void addImage(f);
@@ -652,6 +708,8 @@ function wireKeyboard() {
     if (mod && key === 'c') { e.preventDefault(); copySelected(); return; }
     if (mod && key === 'x') { e.preventDefault(); void cutSelected(); return; }
     if (mod && key === 'v') { e.preventDefault(); void pasteClipboard(); return; }
+    if (mod && key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if (mod && key === 'y') { e.preventDefault(); redo(); return; }
     if (mod || e.altKey) return; // 其餘修飾鍵組合交給瀏覽器/系統
 
     // 以下單鍵;modal 開著不觸發(避免在對話框後面亂改畫布)
