@@ -25,6 +25,9 @@
       background: var(--panel); border-bottom: 1px solid var(--border);
     }
     #toolbar .brand { font-weight: 700; letter-spacing: .5px; }
+    /* 首頁鈕沿用 brand 外觀(非方框);U2 start page 入口 */
+    #home-btn.brand { background: none; border: none; padding: 0 2px; color: var(--text); cursor: pointer; }
+    #home-btn.brand:hover { background: none; color: var(--accent); }
     #toolbar .tools { display: flex; gap: 6px; }
     #toolbar button {
       font: inherit; color: var(--text); background: #333; border: 1px solid var(--border);
@@ -172,11 +175,50 @@
     #export-warn { font-size: 12px; margin-top: 6px; }
     .warn-keep { color: #e0a030; }
     .warn-strict { color: #e06060; }
+    /* U2:start page(模板首頁;無 ?template= 時顯示) */
+    #start-page {
+      position: fixed; inset: 0; z-index: 100; background: var(--bg);
+      display: none; overflow: auto;
+    }
+    #start-page.open { display: block; }
+    .start-inner { max-width: 1000px; margin: 0 auto; padding: 56px 32px 80px; }
+    .start-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+    .start-logo { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
+    .start-folder { color: var(--muted); font-size: 13px; }
+    .start-title { font-size: 16px; font-weight: 600; color: var(--text); margin: 18px 0 18px; }
+    .start-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+    .start-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0; cursor: pointer; overflow: hidden; transition: border-color .12s, transform .12s;
+      display: flex; flex-direction: column; min-height: 168px;
+    }
+    .start-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .start-card .thumb {
+      flex: 1; background: var(--canvas-bg);
+      background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px); background-size: 16px 16px;
+      display: grid; place-items: center; color: var(--muted); font-size: 30px;
+    }
+    .start-card .meta { padding: 10px 12px; border-top: 1px solid var(--border); }
+    .start-card .meta .name { font-weight: 600; color: var(--text); }
+    .start-card .meta .dim { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    /* 建立新模板卡 */
+    .start-card.create { cursor: default; border-style: dashed; justify-content: center; padding: 18px; gap: 10px; }
+    .start-card.create .ttl { font-weight: 600; color: var(--text); }
+    .start-card.create input {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 9px; width: 100%;
+    }
+    .start-card.create button {
+      font: inherit; color: #fff; background: var(--accent); border: 1px solid var(--accent);
+      border-radius: 6px; padding: 7px 12px; cursor: pointer; width: 100%;
+    }
+    .start-card.create .err { color: #e06060; font-size: 12px; min-height: 14px; }
+    .start-empty-hint { color: var(--muted); margin: -6px 0 18px; }
   </style>
 </head>
 <body>
   <div id="toolbar">
-    <span class="brand">tedit</span>
+    <button id="home-btn" class="brand" title="回模板首頁">tedit</button>
     <div class="tools">
       <button id="add-text">＋文字</button>
       <button id="add-image">＋圖片</button>
@@ -261,6 +303,18 @@
         <div class="section-label">CLI 指令</div>
         <pre class="code" id="export-cli"></pre>
       </div>
+    </div>
+  </div>
+
+  <!-- U2:模板首頁(start page);editor.ts 在無 ?template= 時顯示 -->
+  <div id="start-page">
+    <div class="start-inner">
+      <div class="start-head">
+        <span class="start-logo">tedit</span>
+        <span class="start-folder" id="start-folder"></span>
+      </div>
+      <div class="start-title" id="start-title">選一個模板,或建立新的</div>
+      <div class="start-grid" id="start-grid"></div>
     </div>
   </div>
 

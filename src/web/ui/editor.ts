@@ -73,8 +73,15 @@ async function init() {
   fontReg = buildFontRegistry(config);
   const names = await api<string[]>('/api/templates');
   const wanted = new URLSearchParams(location.search).get('template');
-  templateName = wanted && names.includes(wanted) ? wanted : (names[0] ?? 'untitled');
 
+  // U2:無 ?template= → 顯示模板首頁(不啟動引擎,讓使用者選/建模板)
+  if (!wanted) {
+    await showStartPage(names);
+    return;
+  }
+  templateName = wanted;
+
+  // 已存在 → 載入;不存在(剛從首頁建/直接打網址)→ 空白具名模板,首存即建檔
   const initial = names.includes(templateName)
     ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
     : blankScene(config);
@@ -102,6 +109,11 @@ async function init() {
   wireKeyboard();
   wireZoom();
   wireModals();
+  // 首頁鈕(U2):有未存變更先確認
+  $('#home-btn').onclick = () => {
+    if (dirty && !confirm('有未存檔變更,確定離開回首頁?')) return;
+    location.search = '';
+  };
   renderAll();
 }
 
@@ -663,6 +675,93 @@ function renderExportPreview() {
 /** YAML 純量:單純字串直接出,含特殊字元用 JSON 風格雙引號(YAML 相容) */
 function yamlScalar(s: string): string {
   return /^[\w./@:-]+$/.test(s) ? s : JSON.stringify(s);
+}
+
+// ---------- U2:模板首頁(start page) ----------
+// 與 server SAFE_NAME 同步:英數、-、_、CJK(一-鿿 = U+4E00–U+9FFF)
+const TPL_NAME_RE = /^[\w一-鿿-]+$/;
+
+function gotoTemplate(name: string) {
+  location.search = '?template=' + encodeURIComponent(name);
+}
+
+async function showStartPage(names: string[]) {
+  $('#start-folder').textContent = config.name ? `專案:${config.name}` : '目前資料夾';
+  $('#start-title').textContent = names.length
+    ? '選一個模板,或建立新的'
+    : '這個資料夾還沒有模板,建立第一個:';
+
+  // 每個模板抓 JSON → 顯示畫布尺寸 + 元素數(平行)
+  const metas = await Promise.all(
+    names.map(async (n) => {
+      try {
+        const t = await api<Template>(`/api/templates/${encodeURIComponent(n)}`);
+        return { name: n, w: t.canvas.width, h: t.canvas.height, count: t.elements.length };
+      } catch {
+        return { name: n, w: 0, h: 0, count: -1 };
+      }
+    }),
+  );
+
+  const cards = metas
+    .map(
+      (m) =>
+        `<div class="start-card" data-tpl="${escapeHtml(m.name)}" title="開啟 ${escapeHtml(m.name)}">` +
+        `<div class="thumb">▦</div>` +
+        `<div class="meta"><div class="name">${escapeHtml(m.name)}</div>` +
+        `<div class="dim">${m.count < 0 ? '(讀取失敗)' : `${m.w}×${m.h} · ${m.count} 元素`}</div></div></div>`,
+    )
+    .join('');
+
+  $('#start-grid').innerHTML =
+    cards +
+    `<div class="start-card create">` +
+    `<div class="ttl">＋ 建立新模板</div>` +
+    `<input id="new-name" type="text" placeholder="模板名稱(英數 / 中文 / - _)" autocomplete="off">` +
+    `<button id="create-btn">建立</button>` +
+    `<div class="err" id="create-err"></div></div>`;
+
+  // 卡片點擊 → 開該模板
+  $('#start-grid')
+    .querySelectorAll<HTMLElement>('.start-card[data-tpl]')
+    .forEach((c) => (c.onclick = () => gotoTemplate(c.dataset.tpl!)));
+
+  // 建立新模板:驗名 → PUT 空白具名模板 → 進編輯
+  const nameInput = $('#new-name') as HTMLInputElement;
+  const errEl = $('#create-err');
+  const doCreate = async () => {
+    const name = nameInput.value.trim();
+    errEl.textContent = '';
+    if (!name) {
+      errEl.textContent = '請輸入名稱';
+      return;
+    }
+    if (!TPL_NAME_RE.test(name)) {
+      errEl.textContent = '只允許英數、- _、中文';
+      return;
+    }
+    if (names.includes(name)) {
+      gotoTemplate(name); // 已存在 → 直接開,不覆蓋
+      return;
+    }
+    try {
+      await api(`/api/templates/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(blankScene(config)),
+      });
+    } catch (e) {
+      errEl.textContent = `建立失敗:${String(e)}`;
+      return;
+    }
+    gotoTemplate(name);
+  };
+  ($('#create-btn') as HTMLElement).onclick = () => void doCreate();
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') void doCreate();
+  });
+
+  $('#start-page').classList.add('open');
 }
 
 void init().catch((e) => {
