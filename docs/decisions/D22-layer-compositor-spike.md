@@ -1,7 +1,7 @@
 # 全圖層重構 SPIKE 結論(2026-06-16)
 
-> 對應 `layer-compositor-impact.md` §7 任務書。**結果:通過 ✅**
-> 程式在 `spike/compositor/`(不碰正式 src/);證據圖 `examples/spike-compositor-evidence.png`。
+> 對應 `D22-layer-compositor.md` §7 任務書。**結果:通過 ✅**
+> 程式在 `spike/compositor/`(不碰正式 src/);證據圖 `evidence/spike-compositor-evidence.png`。
 > 重跑:`node spike/run-compositor.mjs`
 
 ## 驗了什麼

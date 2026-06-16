@@ -116,7 +116,7 @@ tedit/
 
 ### 全圖層重構(D22,M6 大項)🔨 進行中(branch: feature/layer-compositor)
 - ✅ spike 通過:三層交錯(矩形<iframe<文字)+ 跨 document 守門,兩次渲染 diff=0(spike/run-compositor.mjs)
-- 🔨 正式重構(strangler 漸進;explain/layer-compositor-impact.md §1 影響地圖):
+- 🔨 正式重構(strangler 漸進;docs/decisions/D22-layer-compositor.md §1 影響地圖):
   - 階段 1:schema 加 iframe 元素類型(types/validate + 測試)← 進行中
   - 階段 2:合成器骨架(browser-entry 改多層)
   - 階段 3:映射層改逐層(每元素一 canvas + iframe 層)
