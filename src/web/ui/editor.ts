@@ -518,9 +518,9 @@ async function addShape(shape: 'rect' | 'ellipse' | 'line' = 'rect') {
   const s = scene();
   const id = genId(s);
   if (shape === 'line') {
-    // 線:水平線(height 0 = 兩端 y 相同);需 strokeWidth>0 才看得到
+    // 線:schema 規定 height>0,給個小斜度(視覺近水平);strokeWidth>0 才看得到
     s.elements.push({
-      id, type: 'shape', shape: 'line', x: 100, y: 200, width: 300, height: 0,
+      id, type: 'shape', shape: 'line', x: 100, y: 200, width: 300, height: 4,
       rotation: 0, fill: 'transparent', stroke: '#4a9eff', strokeWidth: 4,
     });
   } else {

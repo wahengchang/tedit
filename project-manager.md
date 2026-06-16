@@ -34,6 +34,7 @@ tedit/
 │   └── ui/index.html · editor.ts · headless.html  ✅ U1 重製(zoom/狀態列/modal/變數chip)      🔴 undo/群組/對齊輔助線擠 editor.ts
 ├── 測試  test/run-unit · e2e/{parity,editor,e2e,compositor-parity} · e2eCli/run-cli  ✅ 六關全綠
 ├── examples/demo/                             ✅ card / multibind / html-card + 資料 + 一鍵腳本
+├── examples/showcase/                          ✅ 應用場景範本:quote/event/crypto + 量產腳本(見 docs/USE-CASES.md)
 ├── spike/                                     ✅ M0 擂台 + 合成器 spike(歸檔)
 └── docs/ + project-manager.md                 ✅ 決議總帳/規格/圖/介面;本檔=進度真相
 ```
