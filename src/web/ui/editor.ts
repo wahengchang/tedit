@@ -451,6 +451,41 @@ async function setCanvasBg(color: string) {
   await commit(s);
 }
 
+// Document settings modal(工具列 doc 鈕):編輯本模板畫布尺寸/背景
+function openDocModal() {
+  const c = scene().canvas;
+  ($('#doc-name') as HTMLInputElement).value = templateName;
+  ($('#doc-w') as HTMLInputElement).value = String(Math.round(c.width));
+  ($('#doc-h') as HTMLInputElement).value = String(Math.round(c.height));
+  const bgInput = $('#doc-bg') as HTMLInputElement;
+  if (typeof c.background === 'string') {
+    bgInput.value = toHex(c.background);
+    bgInput.disabled = false;
+  } else {
+    bgInput.disabled = true; // 背景是圖片 → 不用色票
+  }
+  ($('#doc-preset') as HTMLSelectElement).value = '';
+  openModal('doc-modal');
+}
+
+async function applyDocEdit(e: Event) {
+  const t = e.target as HTMLInputElement | HTMLSelectElement;
+  const w = Number(($('#doc-w') as HTMLInputElement).value);
+  const h = Number(($('#doc-h') as HTMLInputElement).value);
+  if (t.id === 'doc-preset' && t.value) {
+    const [pw, ph] = t.value.split('x').map(Number);
+    if (pw && ph) {
+      await setCanvasSize(pw, ph);
+      ($('#doc-w') as HTMLInputElement).value = String(pw);
+      ($('#doc-h') as HTMLInputElement).value = String(ph);
+    }
+  } else if (t.id === 'doc-w' || t.id === 'doc-h') {
+    await setCanvasSize(w, h);
+  } else if (t.id === 'doc-bg') {
+    await setCanvasBg((t as HTMLInputElement).value);
+  }
+}
+
 // ---------- 工具列:新增 / 刪除 / 複製 ----------
 function wireToolbar() {
   $('#save-btn').onclick = () => void save();
@@ -696,6 +731,8 @@ function wireModals() {
     });
   });
   // 開啟入口
+  $('#doc-btn').onclick = () => openDocModal();
+  $('#doc-modal').addEventListener('change', (e) => void applyDocEdit(e));
   $('#tpl-chip').onclick = () => void openSaveModal();
   $('#export-btn').onclick = () => openExportModal();
   $('#var-chip').onclick = () => openExportModal();

@@ -76,7 +76,7 @@ tedit/
 | U4 | 單鍵工具快捷鍵(Figma 風):T 文字 / R 矩形 / O 橢圓 / L 線 / I 圖片 / H HTML;方向鍵微調選取(1px,Shift=10px);Esc 取消選取(modal 開→關 modal、文字編輯中→交 fabric);addShape 擴充支援 rect/ellipse/line | ✅ | `src/web/ui/` | typing/modal guard 防誤觸;tooltip 標單鍵;六關全綠、實機驗證 T/R/O/L + 方向鍵微調 |
 | U5 | 網頁直接下載 PNG:Export modal 加「Download PNG」+ 倍率(1×/2×/3×);POST `/api/render` 帶目前場景+變數值+strict → **server 子行程跑 CLI render**(D01:不 import cli,出圖管線與 CLI 一致)→ 回 PNG blob 下載;exit 4(--strict 缺值)→ 422 | ✅ | 🟢 `src/web/server.ts` + `src/web/ui/` + `src/cli/render.ts` | **修**:無 `project.json` 的專案 locateProject 會 fallback 到 `.tedit/` 致圖片 404→EncodingError → 給 render 加 `--dir` 明確指定專案根,server 直接傳;curl 驗 repo 根+project1(圖片/形狀/HTML)2400×1260 OK;六關全綠 |
 
-| U6 | 畫布(文件)尺寸可改:沒選元素時右側 Properties 顯示 Canvas 面板(Width/Height/Background + 常用尺寸 preset:IG 方形/直式/Story、OG、HD);改尺寸同步更新 designW/H(zoom 正規化靠它),元素座標保留 | ✅ | `src/web/ui/` | 之前畫布大小只能靠 project.json/建檔決定,編輯器無法改;六關全綠、實機驗證改 Width 即時縮放 |
+| U6 | 畫布(文件)尺寸可改,兩個入口:① 工具列「Document」鈕(文件 icon)開 modal;② 沒選元素時右側 Properties 顯示 Canvas 面板。皆含 Width/Height/Background + 常用尺寸 preset(IG 方形/直式/Story、OG、HD);改尺寸同步更新 designW/H(zoom 正規化靠它),元素座標保留 | ✅ | `src/web/ui/` | 之前畫布大小只能靠 project.json/建檔決定,編輯器無法改;六關全綠、實機驗證 Document modal 與側欄改 Width 皆即時縮放、雙向同步 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 

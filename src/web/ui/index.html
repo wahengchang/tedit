@@ -146,9 +146,18 @@
     .modal-close:hover { color: var(--text); }
     .modal-body { padding: 16px 18px; }
     .modal-body label.row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .modal-body label.row > span:first-child { min-width: 92px; color: var(--muted); }
     .modal-body input[type=text] {
       font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
       border-radius: 5px; padding: 6px 8px; flex: 1;
+    }
+    .modal-body input[type=number], .modal-body select {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 8px; flex: 1;
+    }
+    .modal-body input[type=color] {
+      width: 48px; height: 30px; padding: 1px; background: #1a1a1a;
+      border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
     }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
     .modal-actions button {
@@ -234,6 +243,7 @@
 <body>
   <div id="toolbar">
     <button id="home-btn" class="brand" title="Home">tedit</button>
+    <button id="doc-btn" class="icon-btn" title="Document settings (size, background)" aria-label="Document settings"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h5l3 3v8a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5z"/><path d="M9 2.5V5.5h3"/></svg></button>
     <div class="tools">
       <button id="add-text" class="icon-btn" title="Add text (T)" aria-label="Add text"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h9M8 4.5v8"/></svg></button>
       <button id="add-image" class="icon-btn" title="Add image (I)" aria-label="Add image"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="9" rx="1.5"/><circle cx="5.8" cy="6.8" r="1"/><path d="M3 11.5l3-2.5 2.5 2 2-1.5 2.5 2"/></svg></button>
@@ -279,6 +289,33 @@
     <span id="status-sel">Nothing selected</span>
     <span class="spacer"></span>
     <span id="status-zoom">100%</span>
+  </div>
+
+  <!-- Document settings modal(工具列 doc 鈕開):編輯本模板的畫布尺寸/背景 -->
+  <div id="doc-modal" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>Document</h3>
+        <button class="modal-close" data-close="doc-modal">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="row"><span>Template</span><input id="doc-name" type="text" readonly></label>
+        <label class="row"><span>Width</span><input id="doc-w" type="number" min="1" max="10000"></label>
+        <label class="row"><span>Height</span><input id="doc-h" type="number" min="1" max="10000"></label>
+        <label class="row"><span>Background</span><input id="doc-bg" type="color"></label>
+        <label class="row"><span>Size preset</span>
+          <select id="doc-preset">
+            <option value="">Preset…</option>
+            <option value="1080x1080">1080×1080 · IG square</option>
+            <option value="1080x1350">1080×1350 · IG portrait</option>
+            <option value="1080x1920">1080×1920 · Story/Reel</option>
+            <option value="1200x630">1200×630 · OG/Twitter</option>
+            <option value="1920x1080">1920×1080 · HD 16:9</option>
+          </select>
+        </label>
+        <div class="modal-actions"><button class="primary" data-close="doc-modal">Done</button></div>
+      </div>
+    </div>
   </div>
 
   <!-- Save / history modal(模板名 chip 開) -->
