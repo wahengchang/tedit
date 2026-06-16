@@ -56,10 +56,24 @@ async function init() {
   const wanted = new URLSearchParams(location.search).get('template');
   templateName = wanted && names.includes(wanted) ? wanted : (names[0] ?? 'untitled');
 
-  handle = window.teditEngine.boot('edit', $('#stage'));
   const initial = names.includes(templateName)
     ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
     : blankScene(config);
+
+  // D22 階段 4 守衛:單 canvas 編輯器尚未支援 html 圖層的 WYSIWYG 編輯。
+  // 直接擋下(而非崩潰或存檔掉資料);html 模板目前用 CLI render 出圖。
+  if (initial.elements.some((e) => e.type === 'html')) {
+    $('#tpl-name').textContent = templateName;
+    $('#stage').innerHTML =
+      '<div style="max-width:520px;padding:28px;color:#ddd;font-size:15px;line-height:1.8">' +
+      '<b style="font-size:17px">此模板含 HTML 圖層</b><br>' +
+      '編輯器的 HTML 圖層 WYSIWYG 編輯排程於 D22 階段 4(多層互動)。<br>' +
+      '目前可用 CLI 出圖:<code style="background:#333;padding:2px 6px;border-radius:4px">' +
+      `tedit render templates/${templateName}.template.json data.yaml -o out.png</code></div>`;
+    return; // 不 boot 互動編輯,避免崩潰與存檔掉 html 資料
+  }
+
+  handle = window.teditEngine.boot('edit', $('#stage'));
   await handle.loadScene(initial, fontReg, '/');
 
   // 綁定角標層(S04:僅 UI 覆蓋,不進場景);#stage position:relative,inset 對齊畫布

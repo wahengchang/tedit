@@ -121,9 +121,16 @@ tedit/
   - ✅ 階段 2:合成器核心模組 core/engine/compositor.ts(每元素一 StaticCanvas + iframe 層;
         跨 document 守門 sandbox=allow-same-origin)。與舊單 canvas 並存(window.teditEngine.renderLayers)。
         測試(e2e/run-compositor-parity.mjs):三層交錯連渲 diff=0、html 有畫、**且 compositor == 舊單 canvas diff=0**(切換零風險)
-  - ⬜ 階段 3:把 headless/editor 的 view 路徑切到 compositor(逐層映射全面化)
-  - ⬜ 階段 4:editor 互動(每元素一互動 canvas;最大塊)
-  - ⬜ 階段 5:測試 harness 切到 compositor(parity 含 html 樣本)+ --scale @2x 驗
+  - ✅ 階段 3:CLI headless 出圖切到 compositor(render-png.ts)→ `tedit render` 能出 html 圖層模板
+        (examples/demo/html-card + assets/html/panel.html;e2eCli 驗 exit0+尺寸;實渲三層交錯正確)
+  - ✅ 階段 4 守衛:編輯器遇 html 模板友善擋下(不崩潰、不掉資料),指引用 CLI 出圖
+  - ⬜ 階段 4 正式(editor WYSIWYG html 編輯):**interaction 子重寫**。單 canvas 無法把 iframe 夾在
+        fabric 元素之間 → 需「每元素一互動 canvas」或「隱形 proxy 疊層」;代價=失去 IText 行內編輯,
+        且要重寫 editor.ts + run-editor.mjs。高 blast radius(動到能跑的 M4 編輯器),不宜倉促。
+  - ⬜ 階段 5:editor 上 compositor 後,parity 兩邊都走 compositor(含 html 樣本)+ --scale @2x 驗
+
+**目前可用度**:author html 圖層模板 + `tedit render` 出像素精準 PNG = **完整可用**(核心產品價值)。
+編輯器 WYSIWYG 編輯 html = 待階段 4 正式(已 de-risk:spike+compositor 已證、proxy-overlay 設計已記)。
 
 ### M6 — 擴充背包 ❌(不承諾順序)
 - ❌ undo/redo、群組、輔助線吸附、--keep-alive、URL 圖片變數、
