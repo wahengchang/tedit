@@ -7,6 +7,10 @@
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
+> 🔒 **進行中車道(別碰,會撞)**:
+> - **U1 UI 重製**(依 `draft-ui/` mockup) — worktree `feat/ui-redesign`(`/Users/ppchang/Desktop/projects/teditor-ui`),自 2026-06-16 起。
+>   占用 🔴 熱區 `src/web/ui/`(`editor.ts` + `index.html`)。**B1 undo / B2 對齊輔助線同吃 editor.ts → 暫鎖,等 U1 合併再開。**
+
 ---
 
 ## 1. 模組結構樹(每檔狀態 + 下一步會動哪)
@@ -29,7 +33,7 @@ tedit/
 │   └── headless/render-png.ts                 ✅ Playwright 出圖(走 compositor)
 ├── src/web/
 │   ├── server.ts                             ✅ 薄後端 REST5 + 上傳 + history                🟢 history 治理會動
-│   └── ui/index.html · editor.ts · headless.html  ✅ 深色編輯器(含 html 佔位框/貼碼)        🔴 undo/群組/對齊輔助線擠 editor.ts
+│   └── ui/index.html · editor.ts · headless.html  🔨 U1 UI 重製進行中(feat/ui-redesign)      🔴🔒 鎖定;undo/對齊也擠這
 ├── 測試  test/run-unit · e2e/{parity,editor,e2e,compositor-parity} · e2eCli/run-cli  ✅ 六關全綠
 ├── examples/demo/                             ✅ card / multibind / html-card + 資料 + 一鍵腳本
 ├── spike/                                     ✅ M0 擂台 + 合成器 spike(歸檔)
@@ -63,12 +67,18 @@ tedit/
 | A1 | 中文 IME 人工驗證 | ⏳ | 機器測不了,需你雙擊文字打注音確認不掉字/跳位 → M5 收尾 |
 | A2 | 合併 feature 分支 → main | ✅ | 已合併(merge c5b82d0),分支已刪,main 六關全綠 |
 
+### U. UI 重製(進行中 🔨)
+
+| # | 工作 | 狀態 | 觸碰熱區 | worktree | 備註 |
+|---|------|------|----------|----------|------|
+| U1 | 依 `draft-ui/` mockup 重製/補齊編輯器 UI(頂列工具列、屬性面板、Save/history modal、Export PNG modal、狀態列、變數 chip、8 控制柄可拖、圖層拖排 z-order) | 🔨 | 🔴🔒 `src/web/ui/`(editor.ts+index.html) | `feat/ui-redesign` | 規格基準=`draft-ui/tedit.dc.html` + 交接說明;資料模型照搬第3節 layer schema |
+
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 
 | # | 功能 | 狀態 | 觸碰熱區 | 可平行? | 備註 |
 |---|------|------|----------|---------|------|
-| B1 | undo / redo | ⬜ | editor.ts | 與其他 editor 功能互斥 | 場景快照堆疊 |
-| B2 | 對齊輔助線 + 吸附 | ⬜ | editor.ts | 與 B1 互斥 | 純編輯器 |
+| B1 | undo / redo | 🔒 等 U1 | editor.ts | 與其他 editor 功能互斥 | 場景快照堆疊;U1 鎖 editor.ts 中,合併後再開 |
+| B2 | 對齊輔助線 + 吸附 | 🔒 等 U1 | editor.ts | 與 B1 互斥 | 純編輯器;同上,等 U1 合併 |
 | B3 | 批次資料表量產(CSV) | ⬜ | 🟢 cli | 可平行 | 提案見 docs/interface-examples/A-proposal-batch.csv |
 | B4 | URL 圖片變數 | ⬜ | 🟢 resolver+cli | 可平行 | 下載/快取/逾時要研究 |
 | B5 | `--keep-alive` 常駐加速 | ⬜ | 🟢 headless+cli | 可平行 | 重複出圖提速 |
@@ -79,6 +89,7 @@ tedit/
 
 > **平行化提醒**:🔴 三角(schema/映射層)與 editor.ts 是兩個序列化熱區,一次進一個;
 > 🟢 乾淨車道(cli/resolver/server/headless)可同時開 worktree。
+> **現況**:editor.ts 熱區已被 **U1(feat/ui-redesign)** 占用 🔒 → 想平行請挑 🟢 車道(B3/B4/B5/B6),別碰 editor.ts;🔴 schema 三角(B7/B8)仍空著但動它要先定資料結構。
 
 ---
 
