@@ -111,7 +111,7 @@ async function init() {
   wireModals();
   // 首頁鈕(U2):有未存變更先確認
   $('#home-btn').onclick = () => {
-    if (dirty && !confirm('有未存檔變更,確定離開回首頁?')) return;
+    if (dirty && !confirm('Unsaved changes. Leave and go to home?')) return;
     location.search = '';
   };
   renderAll();
@@ -164,11 +164,11 @@ function renderStatus() {
   const el = selectedElement();
   const sel = $('#status-sel');
   if (!el) {
-    sel.textContent = '未選取';
+    sel.textContent = 'Nothing selected';
     return;
   }
-  const dims = el.type === 'text' ? `寬 ${Math.round(el.width)}` : `${Math.round(el.width)}×${Math.round(el.height)}`;
-  sel.textContent = `選取:${el.id}(${el.type})${dims} @(${Math.round(el.x)},${Math.round(el.y)})`;
+  const dims = el.type === 'text' ? `W ${Math.round(el.width)}` : `${Math.round(el.width)}×${Math.round(el.height)}`;
+  sel.textContent = `Selected: ${el.id} (${el.type}) ${dims} @(${Math.round(el.x)},${Math.round(el.y)})`;
 }
 
 // ---------- 變數 chip ----------
@@ -179,7 +179,7 @@ function renderVarChip() {
 function markDirty() {
   if (dirty) return;
   dirty = true;
-  $('#save-btn').textContent = '存檔 *';
+  $('#save-btn').textContent = 'Save *';
 }
 
 // ---------- 圖層列表(含拖排改 z-order)----------
@@ -210,7 +210,7 @@ function renderLayers() {
     });
     list.appendChild(row);
   }
-  if (layers.length === 0) list.innerHTML = '<div class="empty">（空畫布,尚無元素）</div>';
+  if (layers.length === 0) list.innerHTML = '<div class="empty">(empty canvas)</div>';
 }
 
 /** 把 dragId 移到 targetId 在顯示列表中的位置(顯示為 z 高→低,需轉回 elements 的低→高) */
@@ -237,7 +237,7 @@ function renderProps() {
   const panel = $('#props-body');
   const el = selectedElement();
   if (!el) {
-    panel.innerHTML = '<div class="empty">（未選取元素）</div>';
+    panel.innerHTML = '<div class="empty">(nothing selected)</div>';
     return;
   }
   const numF = (label: string, key: string, val: number) =>
@@ -251,32 +251,32 @@ function renderProps() {
 
   let html = `<div class="prop-head">${TYPE_ICON[el.type]} ${el.id} <em>${el.type}</em></div>`;
   html += numF('X', 'x', el.x) + numF('Y', 'y', el.y);
-  html += numF('寬', 'width', el.width);
-  if (el.type !== 'text') html += numF('高', 'height', el.height);
-  html += numF('旋轉', 'rotation', el.rotation);
+  html += numF('W', 'width', el.width);
+  if (el.type !== 'text') html += numF('H', 'height', el.height);
+  html += numF('Rotation', 'rotation', el.rotation);
 
   if (el.type === 'text') {
-    html += `<label class="prop col"><span>內容</span><textarea data-k="content" rows="3">${escapeHtml(el.content)}</textarea></label>`;
-    html += numF('字級', 'fontSize', el.fontSize);
-    html += selF('字體', 'fontFamily', el.fontFamily, fontFamilies());
-    html += selF('對齊', 'align', el.align, ['left', 'center', 'right']);
-    html += colorF('顏色', 'color', el.color);
+    html += `<label class="prop col"><span>Content</span><textarea data-k="content" rows="3">${escapeHtml(el.content)}</textarea></label>`;
+    html += numF('Size', 'fontSize', el.fontSize);
+    html += selF('Font', 'fontFamily', el.fontFamily, fontFamilies());
+    html += selF('Align', 'align', el.align, ['left', 'center', 'right']);
+    html += colorF('Color', 'color', el.color);
   } else if (el.type === 'image') {
-    html += `<div class="prop"><span>來源</span><b>${el.src}</b></div>`;
-    html += selF('裁切', 'fit', el.fit, ['cover', 'contain', 'stretch']);
+    html += `<div class="prop"><span>Source</span><b>${el.src}</b></div>`;
+    html += selF('Fit', 'fit', el.fit, ['cover', 'contain', 'stretch']);
   } else if (el.type === 'shape') {
-    html += selF('形狀', 'shape', el.shape, ['rect', 'ellipse', 'line']);
-    html += colorF('填色', 'fill', el.fill);
-    html += colorF('描邊', 'stroke', el.stroke);
-    html += numF('描邊寬', 'strokeWidth', el.strokeWidth);
+    html += selF('Shape', 'shape', el.shape, ['rect', 'ellipse', 'line']);
+    html += colorF('Fill', 'fill', el.fill);
+    html += colorF('Stroke', 'stroke', el.stroke);
+    html += numF('Stroke W', 'strokeWidth', el.strokeWidth);
   } else {
     // html 元素(D22):佔位框在畫布上可拖/縮放;內容在此貼上(inline)或顯示檔案來源
     if (typeof el.src === 'string') {
-      html += `<div class="prop"><span>HTML 檔</span><b>${el.src}</b></div>`;
+      html += `<div class="prop"><span>HTML file</span><b>${el.src}</b></div>`;
     } else {
-      html += `<label class="prop col"><span>HTML 代碼(貼上整段)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
+      html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
-    html += `<div class="prop"><span></span><small style="color:var(--muted)">內容在出圖時渲染;畫布上顯示佔位框</small></div>`;
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">Rendered at export; placeholder shown on canvas</small></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
@@ -285,9 +285,9 @@ function renderProps() {
     const b = bindingFor(scene(), el.id);
     html += `<div class="bind-box">
       <label class="bind-toggle"><input type="checkbox" data-bind-toggle="1" ${b ? 'checked' : ''}>
-        <span>綁定變數（${spec.prop}）</span></label>`;
+        <span>Bind variable (${spec.prop})</span></label>`;
     if (b) {
-      html += `<label class="prop"><span>變數名</span><input data-bind-var="1" type="text" value="${escapeHtml(b.var)}"></label>`;
+      html += `<label class="prop"><span>Variable</span><input data-bind-var="1" type="text" value="${escapeHtml(b.var)}"></label>`;
     }
     html += `</div>`;
   }
@@ -415,7 +415,7 @@ async function addText() {
   const id = genId(s);
   s.elements.push({
     id, type: 'text', x: 80, y: 80, width: 400, rotation: 0,
-    content: '雙擊以編輯文字', fontFamily: fam, fontSize: 48, color: '#111111',
+    content: 'Double-click to edit', fontFamily: fam, fontSize: 48, color: '#111111',
     align: 'left', lineHeight: 1.3,
   });
   await commit(s, id);
@@ -437,7 +437,7 @@ async function addHtml() {
   const id = genId(s);
   s.elements.push({
     id, type: 'html', x: 120, y: 120, width: 400, height: 240, rotation: 0,
-    html: '<div style="font:24px system-ui;padding:20px;color:#fff;background:#333">貼上你的 HTML</div>',
+    html: '<div style="font:24px system-ui;padding:20px;color:#fff;background:#333">Paste your HTML</div>',
   });
   await commit(s, id);
 }
@@ -485,6 +485,38 @@ async function duplicateSelected() {
   await commit(s, newId);
 }
 
+// ---------- 剪貼簿(app 內 copy / cut / paste;不碰系統剪貼簿)----------
+// 存目前選取元素的深拷貝(不含綁定,與 duplicate 一致)。多次貼上會階梯狀位移。
+let clipboard: SceneElement | null = null;
+
+function copySelected() {
+  const el = selectedElement();
+  if (!el) return;
+  clipboard = structuredClone(el);
+}
+
+async function cutSelected() {
+  const el = selectedElement();
+  if (!el) return;
+  clipboard = structuredClone(el);
+  await deleteSelected();
+}
+
+async function pasteClipboard() {
+  if (!clipboard) return;
+  const s = scene();
+  const id = genId(s);
+  const copy = structuredClone(clipboard);
+  copy.id = id;
+  copy.x += 24;
+  copy.y += 24;
+  s.elements.push(copy);
+  // 讓下一次貼上從這份位置再 +24(連續貼上呈階梯,不重疊)
+  clipboard.x = copy.x;
+  clipboard.y = copy.y;
+  await commit(s, id);
+}
+
 // ---------- 鍵盤 ----------
 function wireKeyboard() {
   document.addEventListener('keydown', (e) => {
@@ -495,12 +527,23 @@ function wireKeyboard() {
     const tag = (document.activeElement?.tagName ?? '').toLowerCase();
     const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
     if (typing) return; // 正在輸入(含 fabric 文字編輯的隱藏 textarea)→ 不攔截
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+    const mod = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
+    if (mod && key === 's') {
       e.preventDefault();
       void save();
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+    } else if (mod && key === 'd') {
       e.preventDefault();
       void duplicateSelected();
+    } else if (mod && key === 'c') {
+      e.preventDefault();
+      copySelected();
+    } else if (mod && key === 'x') {
+      e.preventDefault();
+      void cutSelected();
+    } else if (mod && key === 'v') {
+      e.preventDefault();
+      void pasteClipboard();
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       void deleteSelected();
@@ -519,12 +562,12 @@ async function save() {
     });
   } catch (e) {
     // server 端 schema 驗證失敗(如變數型別衝突)→ 提示而非靜默
-    alert(`存檔失敗:\n${String(e)}`);
+    alert(`Save failed:\n${String(e)}`);
     return;
   }
   dirty = false;
-  $('#save-btn').textContent = '存檔 ✓';
-  setTimeout(() => ($('#save-btn').textContent = '存檔'), 1200);
+  $('#save-btn').textContent = 'Save ✓';
+  setTimeout(() => ($('#save-btn').textContent = 'Save'), 1200);
 }
 
 // ---------- 小工具 ----------
@@ -571,11 +614,11 @@ async function openSaveModal() {
   ($('#save-name') as HTMLInputElement).value = templateName;
   openModal('save-modal');
   const list = $('#history-list');
-  list.innerHTML = '<li class="empty">載入中…</li>';
+  list.innerHTML = '<li class="empty">Loading…</li>';
   try {
     const hist = await api<string[]>(`/api/templates/${encodeURIComponent(templateName)}/history`);
     if (hist.length === 0) {
-      list.innerHTML = '<li class="empty">(尚無歷史副本;存一次檔就會出現)</li>';
+      list.innerHTML = '<li class="empty">(no history yet — save once to create one)</li>';
       return;
     }
     list.innerHTML = '';
@@ -585,7 +628,7 @@ async function openSaveModal() {
       list.appendChild(li);
     }
   } catch {
-    list.innerHTML = '<li class="empty">(無法讀取歷史副本)</li>';
+    list.innerHTML = '<li class="empty">(could not load history)</li>';
   }
 }
 
@@ -611,7 +654,7 @@ function renderExportVars() {
   const tbody = $('#export-vars');
   if (vars.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="3" style="color:var(--muted)">(尚無綁定變數;在屬性面板開「綁定變數」)</td></tr>';
+      '<tr><td colspan="3" style="color:var(--muted)">(no bound variables — enable "Bind variable" in Properties)</td></tr>';
     renderExportPreview();
     return;
   }
@@ -619,7 +662,7 @@ function renderExportVars() {
     .map(
       (v) =>
         `<tr><td>{${escapeHtml(v.var)}}</td><td>${v.type}</td>` +
-        `<td><input data-export-var="${escapeHtml(v.var)}" type="text" placeholder="設計時值:${escapeHtml(v.locations[0]?.designValue ?? '')}"></td></tr>`,
+        `<td><input data-export-var="${escapeHtml(v.var)}" type="text" placeholder="design value: ${escapeHtml(v.locations[0]?.designValue ?? '')}"></td></tr>`,
     )
     .join('');
   tbody.querySelectorAll('input[data-export-var]').forEach((inp) => inp.addEventListener('input', renderExportPreview));
@@ -645,9 +688,9 @@ function renderExportPreview() {
   // YAML
   $('#export-yaml').textContent =
     vars.length === 0
-      ? '# (無變數)'
+      ? '# (no variables)'
       : vars
-          .map((v) => `${v.var}: ${filled[v.var] !== undefined ? yamlScalar(filled[v.var]!) : '   # 缺值 → 沿用設計時值'}`)
+          .map((v) => `${v.var}: ${filled[v.var] !== undefined ? yamlScalar(filled[v.var]!) : '   # missing → falls back to design value'}`)
           .join('\n');
 
   // CLI
@@ -658,17 +701,17 @@ function renderExportPreview() {
   // 缺值警告(--strict 改變文案:沿用 ↔ exit 4 中止,對應 US-5)
   const warn = $('#export-warn');
   if (missing.length === 0) {
-    warn.textContent = '所有變數已填 → 出圖 exit 0。';
+    warn.textContent = 'All variables set → render exit 0.';
     warn.className = '';
     warn.style.color = 'var(--muted)';
   } else if (strict) {
     warn.style.color = '';
     warn.className = 'warn-strict';
-    warn.textContent = `--strict:缺 ${missing.length} 個變數(${missing.join(', ')})→ 中止,exit 4。`;
+    warn.textContent = `--strict: ${missing.length} missing (${missing.join(', ')}) → abort, exit 4.`;
   } else {
     warn.style.color = '';
     warn.className = 'warn-keep';
-    warn.textContent = `缺 ${missing.length} 個變數(${missing.join(', ')})→ 沿用設計時值並警告,exit 0。`;
+    warn.textContent = `${missing.length} missing (${missing.join(', ')}) → fall back to design values with warning, exit 0.`;
   }
 }
 
@@ -686,10 +729,10 @@ function gotoTemplate(name: string) {
 }
 
 async function showStartPage(names: string[]) {
-  $('#start-folder').textContent = config.name ? `專案:${config.name}` : '目前資料夾';
+  $('#start-folder').textContent = config.name ? `Project: ${config.name}` : 'Current folder';
   $('#start-title').textContent = names.length
-    ? '選一個模板,或建立新的'
-    : '這個資料夾還沒有模板,建立第一個:';
+    ? 'Pick a template, or create one'
+    : 'No templates here yet — create the first:';
 
   // 每個模板抓 JSON → 顯示畫布尺寸 + 元素數(平行)
   const metas = await Promise.all(
@@ -706,19 +749,19 @@ async function showStartPage(names: string[]) {
   const cards = metas
     .map(
       (m) =>
-        `<div class="start-card" data-tpl="${escapeHtml(m.name)}" title="開啟 ${escapeHtml(m.name)}">` +
+        `<div class="start-card" data-tpl="${escapeHtml(m.name)}" title="Open ${escapeHtml(m.name)}">` +
         `<div class="thumb">▦</div>` +
         `<div class="meta"><div class="name">${escapeHtml(m.name)}</div>` +
-        `<div class="dim">${m.count < 0 ? '(讀取失敗)' : `${m.w}×${m.h} · ${m.count} 元素`}</div></div></div>`,
+        `<div class="dim">${m.count < 0 ? '(load failed)' : `${m.w}×${m.h} · ${m.count} elements`}</div></div></div>`,
     )
     .join('');
 
   $('#start-grid').innerHTML =
     cards +
     `<div class="start-card create">` +
-    `<div class="ttl">＋ 建立新模板</div>` +
-    `<input id="new-name" type="text" placeholder="模板名稱(英數 / 中文 / - _)" autocomplete="off">` +
-    `<button id="create-btn">建立</button>` +
+    `<div class="ttl">＋ New template</div>` +
+    `<input id="new-name" type="text" placeholder="Template name (a–z 0–9 - _)" autocomplete="off">` +
+    `<button id="create-btn">Create</button>` +
     `<div class="err" id="create-err"></div></div>`;
 
   // 卡片點擊 → 開該模板
@@ -733,11 +776,11 @@ async function showStartPage(names: string[]) {
     const name = nameInput.value.trim();
     errEl.textContent = '';
     if (!name) {
-      errEl.textContent = '請輸入名稱';
+      errEl.textContent = 'Enter a name';
       return;
     }
     if (!TPL_NAME_RE.test(name)) {
-      errEl.textContent = '只允許英數、- _、中文';
+      errEl.textContent = 'Allowed: letters, digits, - _';
       return;
     }
     if (names.includes(name)) {
@@ -751,7 +794,7 @@ async function showStartPage(names: string[]) {
         body: JSON.stringify(blankScene(config)),
       });
     } catch (e) {
-      errEl.textContent = `建立失敗:${String(e)}`;
+      errEl.textContent = `Create failed: ${String(e)}`;
       return;
     }
     gotoTemplate(name);
@@ -765,5 +808,5 @@ async function showStartPage(names: string[]) {
 }
 
 void init().catch((e) => {
-  document.body.innerHTML = `<pre style="color:#f88;padding:20px">編輯器啟動失敗:\n${String(e)}</pre>`;
+  document.body.innerHTML = `<pre style="color:#f88;padding:20px">Editor failed to start:\n${String(e)}</pre>`;
 });
