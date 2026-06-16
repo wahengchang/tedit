@@ -5,7 +5,7 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { loadTemplate, locateProject, CliError, EXIT } from './shared.js';
-import { buildFontRegistry } from '../core/project.js';
+import { buildFontRegistry, parseProjectConfig, DEFAULT_PROJECT } from '../core/project.js';
 import { findUnresolvedFonts } from '../core/scene/validate.js';
 import { resolveScene } from '../core/resolver/index.js';
 import { renderScenePng, AssetLoadError } from './headless/render-png.js';
@@ -17,11 +17,16 @@ export interface RenderArgs {
   out: string;
   scale: number;
   strict: boolean;
+  /** 明確指定專案根(覆寫 locateProject 的往上搜尋;web /api/render 用)。 */
+  projectDir?: string;
 }
 
 export async function runRender(args: RenderArgs): Promise<void> {
   const scene = loadTemplate(args.template);
-  const { projectDir, config } = locateProject(args.template);
+  // --dir 給定 → 以該夾為專案根(讀其 project.json,沒有則用預設);否則沿用 locateProject。
+  const { projectDir, config } = args.projectDir
+    ? { projectDir: path.resolve(args.projectDir), config: readProjectConfigOrDefault(path.resolve(args.projectDir)) }
+    : locateProject(args.template);
   const fontRegistry = buildFontRegistry(config);
 
   // 字體規則(D09):不在註冊表(含內建字)或檔案不存在 → exit 5,不靜默 fallback
@@ -76,6 +81,21 @@ export async function runRender(args: RenderArgs): Promise<void> {
   writeFileSync(outPath, png);
   // D04:stdout 只印產物絕對路徑一行
   console.log(outPath);
+}
+
+/** 讀指定資料夾的 project.json;不存在用 DEFAULT,格式錯則報錯(與 locateProject 一致)。 */
+function readProjectConfigOrDefault(dir: string) {
+  const pj = path.join(dir, 'project.json');
+  if (!existsSync(pj)) return DEFAULT_PROJECT;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(pj, 'utf8'));
+  } catch (e) {
+    throw new CliError(EXIT.OTHER, `project.json 不是合法 JSON:${e instanceof Error ? e.message : e}`);
+  }
+  const { config, error } = parseProjectConfig(parsed);
+  if (!config) throw new CliError(EXIT.OTHER, error ?? 'project.json 格式錯誤');
+  return config;
 }
 
 /**

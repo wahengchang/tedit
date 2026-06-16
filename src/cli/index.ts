@@ -69,8 +69,8 @@ async function main(): Promise<void> {
       return;
     }
     case 'render': {
-      const p = parseArgv(rest, new Set(['-o', '--out', '--scale']));
-      rejectUnknownFlags(p, ['-o', '--out', '--scale', '--strict']);
+      const p = parseArgv(rest, new Set(['-o', '--out', '--scale', '--dir']));
+      rejectUnknownFlags(p, ['-o', '--out', '--scale', '--strict', '--dir']);
       const [template, data, ...extra] = p.positional;
       if (!template || !data) throw new CliError(EXIT.ARGS, `render 需要 <template> 與 <data>\n${USAGE}`);
       if (extra.length > 0) throw new CliError(EXIT.ARGS, `多餘參數:${extra.join(' ')}`);
@@ -80,6 +80,8 @@ async function main(): Promise<void> {
         out: (p.flags.get('-o') as string) ?? (p.flags.get('--out') as string) ?? './out.png',
         scale: parseNumberFlag(p, '--scale', 1),
         strict: p.flags.has('--strict'),
+        // --dir:明確指定專案根(web /api/render 用;不給則沿用 locateProject 往上找)
+        projectDir: (p.flags.get('--dir') as string) ?? undefined,
       });
       return;
     }

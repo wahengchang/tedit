@@ -198,7 +198,9 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     try {
       await writeFile(tplFile, JSON.stringify(body.scene));
       await writeFile(dataFile, JSON.stringify(data));
-      const cliArgs = ['render', tplFile, dataFile, '-o', outFile, '--scale', String(scale)];
+      // --dir 明確指定專案根 → 資產/字體相對專案根解析(不靠 locateProject 往上猜,
+      // 修正無 project.json 專案會 fallback 到 .tedit/ 導致圖片 404→EncodingError 的 bug)
+      const cliArgs = ['render', tplFile, dataFile, '-o', outFile, '--scale', String(scale), '--dir', PROJECT_DIR];
       if (strict) cliArgs.push('--strict');
       const { code, stderr } = await runCli(cliArgs);
       if (code !== 0) {

@@ -74,7 +74,7 @@ tedit/
 | U2 | 模板首頁(start page):無 `?template=` → 列出資料夾模板(縮圖卡+尺寸+元素數),點開即編輯;「建立新模板」輸入名稱(支援 CJK)→ 建空白模板進編輯;brand=首頁鈕(有未存變更先確認) | ✅ | `src/web/ui/` | 解決「新模板無法命名」缺口;建立走既有 PUT(無新端點);e2e 全程帶 `?template=` 不觸發首頁,六關全綠;實機驗證列表/建立/往返 |
 | U3 | copy / cut / paste(⌘C/⌘X/⌘V,app 內剪貼簿,連續貼上階梯位移);UI 全面英文化;工具列改 inline-SVG icon(insert T/圖/方框/`</>`、duplicate、trash、export download;Save 留文字保 ✓/* 狀態與 e2e) | ✅ | `src/web/ui/` | 文字編輯態走原生剪貼簿(typing guard);六關全綠、實機驗證 copy-paste 階梯與全英文 UI |
 | U4 | 單鍵工具快捷鍵(Figma 風):T 文字 / R 矩形 / O 橢圓 / L 線 / I 圖片 / H HTML;方向鍵微調選取(1px,Shift=10px);Esc 取消選取(modal 開→關 modal、文字編輯中→交 fabric);addShape 擴充支援 rect/ellipse/line | ✅ | `src/web/ui/` | typing/modal guard 防誤觸;tooltip 標單鍵;六關全綠、實機驗證 T/R/O/L + 方向鍵微調 |
-| U5 | 網頁直接下載 PNG:Export modal 加「Download PNG」+ 倍率(1×/2×/3×);POST `/api/render` 帶目前場景+變數值+strict → **server 子行程跑 CLI render**(D01:不 import cli,出圖管線與 CLI 一致)→ 回 PNG blob 下載;exit 4(--strict 缺值)→ 422 | ✅ | 🟢 `src/web/server.ts` + `src/web/ui/` | temp 檔放 `.tedit/`(locateProject 找得到 project.json/資產);curl 驗 2400×1260 真卡片、實機驗證「Downloaded ✓」;六關全綠 |
+| U5 | 網頁直接下載 PNG:Export modal 加「Download PNG」+ 倍率(1×/2×/3×);POST `/api/render` 帶目前場景+變數值+strict → **server 子行程跑 CLI render**(D01:不 import cli,出圖管線與 CLI 一致)→ 回 PNG blob 下載;exit 4(--strict 缺值)→ 422 | ✅ | 🟢 `src/web/server.ts` + `src/web/ui/` + `src/cli/render.ts` | **修**:無 `project.json` 的專案 locateProject 會 fallback 到 `.tedit/` 致圖片 404→EncodingError → 給 render 加 `--dir` 明確指定專案根,server 直接傳;curl 驗 repo 根+project1(圖片/形狀/HTML)2400×1260 OK;六關全綠 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 
