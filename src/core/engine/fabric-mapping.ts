@@ -48,6 +48,11 @@ export async function load(canvas: AnyCanvas, scene: Template, assetBase: string
 }
 
 async function elementToObject(el: SceneElement, assetBase: string): Promise<FabricObject> {
+  // html 元素由「多層合成器」渲染(D22 階段 2/3),不走 fabric 物件。
+  // 在此明確擋下,避免被當成 text 靜默誤渲染。
+  if (el.type === 'html') {
+    throw new Error('html 元素的渲染尚未實作(D22 階段 2/3:多層合成器)');
+  }
   const meta: TeditMeta = { teditId: el.id, teditType: el.type };
 
   if (el.type === 'shape') {

@@ -11,7 +11,7 @@ import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
-const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇' };
+const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇', html: '◧' };
 
 let handle: EngineHandle;
 let config: ProjectConfig;
@@ -171,11 +171,14 @@ function renderProps() {
   } else if (el.type === 'image') {
     html += `<div class="prop"><span>來源</span><b>${el.src}</b></div>`;
     html += selF('裁切', 'fit', el.fit, ['cover', 'contain', 'stretch']);
-  } else {
+  } else if (el.type === 'shape') {
     html += selF('形狀', 'shape', el.shape, ['rect', 'ellipse', 'line']);
     html += colorF('填色', 'fill', el.fill);
     html += colorF('描邊', 'stroke', el.stroke);
     html += numF('描邊寬', 'strokeWidth', el.strokeWidth);
+  } else {
+    // html 元素(D22;階段 4 才做完整編輯 UI)
+    html += `<div class="prop"><span>HTML 來源</span><b>${el.src}</b></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁

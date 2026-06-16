@@ -25,12 +25,12 @@ export interface CanvasSpec {
   background: string | { image: string };
 }
 
-export type SceneElement = TextElement | ImageElement | ShapeElement;
+export type SceneElement = TextElement | ImageElement | ShapeElement | HtmlElement;
 
 export interface ElementBase {
   /** 模板內唯一,編輯器產生(如 "el_a1b2") */
   id: string;
-  type: 'text' | 'image' | 'shape';
+  type: 'text' | 'image' | 'shape' | 'html';
   /** 左上角座標,px,原點左上、y 向下 */
   x: number;
   y: number;
@@ -78,4 +78,16 @@ export interface ShapeElement extends ElementBase {
   stroke: string;
   /** px,0 = 無描邊 */
   strokeWidth: number;
+}
+
+/**
+ * HTML 圖層(D22 全圖層重構):一層由本地 HTML 檔渲染的內容(經 iframe 隔離)。
+ * 渲染走多層合成器(階段 2/3 實作);此元素只負責「描述」,渲染前資產須自足(不可外連)。
+ */
+export interface HtmlElement extends ElementBase {
+  type: 'html';
+  width: number;
+  height: number;
+  /** 專案內相對路徑,指向本地 HTML 檔(如 "assets/html/bg.html");不可外連 */
+  src: string;
 }
