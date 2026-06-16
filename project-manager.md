@@ -83,18 +83,36 @@ tedit/
 
 ---
 
-## 3. 目前狀態與待你決定
+## 3. 現在做到哪了(自包含答案)
 
-**現在可用度(交付狀態)**
-- ✅ **核心產品已可用**:schema 描述 html 圖層(內嵌代碼或本地檔)→ `tedit render` 出**像素精準** PNG(三層交錯正確)。
-- ✅ **編輯器可編 html 圖層**:＋HTML 加一層 → 畫布上是可拖/縮放的佔位框(z-order 正確)→ 屬性面板**貼整段 HTML 代碼** → 存檔 → CLI 出圖看真內容。文字仍保留雙擊 IText 行內編輯。
-- ⏳ 中文 IME:僅初步人工試過,待正式收尾(M5)。
+### 全部做完了嗎?
+**核心 v1 + HTML 圖層 = 做完了、而且全綠。** 唯二收尾不是「沒寫完的程式」,是:
+(1) 中文 IME 人工驗證(機器測不了,要真人打注音);(2) 要不要把 `feature/layer-compositor` 合回 `main`。
 
-**階段 4 決議(已定)**:走 **C(佔位框法)** — 不做 proxy-overlay 大重寫,保住 M4 單 canvas + IText;
+### 現在能做什麼(可直接 demo)
+| 能力 | 怎麼跑 | 結果 |
+|------|--------|------|
+| 變數注入:同模板換資料 | `tedit render card.template.json a.yaml` / `b.yaml` | 同版面、不同標題(設計一次、換資料量產) |
+| HTML 圖層出圖 | `tedit render html-card.template.json empty.yaml` | 矩形→HTML 漸層面板→文字 三層交錯,像素精準 |
+| 編輯器加 HTML | 開 `tedit ui` → ＋HTML → 屬性面板貼整段代碼 → 存檔 | 畫布上是可拖/縮放佔位框;出圖時才渲染真內容 |
+| 一鍵示範 | `npm run render:demo` / `npm run ui:demo` | — |
+
+### 綠不綠的真相(誠實版)
+- **程式碼 + 測試:全綠** — `npm test` 結束碼 0、**六關全過**(unit / parity / cli / editor / e2e / compositor),lint + typecheck 乾淨。
+- **看板上的非綠 = 3 類,沒有一個是壞掉或半成品**:
+  - `M5 🔨` → 只差 **IME 人工驗證**(等你打注音)
+  - `M6 ⬜` → **未來擴充**(undo/群組/輔助線/批次…),本輪不做
+  - `(可選)即時 HTML 預覽 ⬜` → **刻意略過**(貼好代碼出圖即可,不需要)
+
+### 階段 4 決議(已定)
+走 **C(佔位框法)**:不做 proxy-overlay 大重寫,**保住 M4 單 canvas + IText 行內編輯**;
 html 在編輯器顯示佔位框(內容出圖時渲染),貼合「準備好整段代碼貼上」的工作流。
-(若日後要「編輯器內即時 html 預覽」,才需 compositor-editor;目前非必要。)
+(日後若要「編輯器內即時 HTML 預覽」才需 compositor-editor;目前非必要。)
 
-**測試品質**:`npm test` 六關全綠(unit / parity / cli / editor / e2e / compositor);lint + typecheck 乾淨。
-編輯器 e2e 已涵蓋:加 html → 貼代碼 → 存檔 → CLI render。
+### 剩下兩件(等你)
+1. **中文 IME 人工驗證**:開 `tedit ui`,雙擊文字用注音打中文,確認不掉字/不跳位 → M5 收尾。
+2. **合併分支**:`feature/layer-compositor` 全綠、`main` 受保護,隨時可合。
 
-**風險備忘**:fabric lineHeight 1.13 常數(升版要驗);英文混排斷詞(M6);無遠端 repo → CI 暫=本地 npm test。
+### 風險備忘
+fabric lineHeight 1.13 常數(升版要重驗,往返測試會抓);英文混排斷詞(列 M6);
+無遠端 repo → CI 硬指標暫以本地 `npm test` 代行。
