@@ -178,6 +178,18 @@
     #export-warn { font-size: 12px; margin-top: 6px; }
     .warn-keep { color: #e0a030; }
     .warn-strict { color: #e06060; }
+    /* Download row */
+    .dl-row { display: flex; align-items: center; gap: 10px; }
+    .dl-row select {
+      font: inherit; color: var(--text); background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 8px;
+    }
+    .dl-row button.primary {
+      font: inherit; color: #fff; background: var(--accent); border: 1px solid var(--accent);
+      border-radius: 6px; padding: 7px 16px; cursor: pointer;
+    }
+    .dl-row button:disabled { opacity: .6; cursor: default; }
+    #dl-status { font-size: 12px; color: var(--muted); }
     /* U2:start page(模板首頁;無 ?template= 時顯示) */
     #start-page {
       position: fixed; inset: 0; z-index: 100; background: var(--bg);
@@ -305,6 +317,16 @@
         <pre class="code" id="export-yaml"></pre>
         <div class="section-label">CLI command</div>
         <pre class="code" id="export-cli"></pre>
+        <div class="section-label">Download</div>
+        <div class="dl-row">
+          <select id="dl-scale" title="Output scale (deviceScaleFactor)">
+            <option value="1">1×</option>
+            <option value="2" selected>2×</option>
+            <option value="3">3×</option>
+          </select>
+          <button id="download-btn" class="primary">Download PNG</button>
+          <span id="dl-status"></span>
+        </div>
       </div>
     </div>
   </div>

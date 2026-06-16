@@ -644,6 +644,56 @@ function wireModals() {
   // 動作
   $('#save-confirm').onclick = () => void saveFromModal();
   $('#strict-toggle').addEventListener('change', renderExportPreview);
+  $('#download-btn').onclick = () => void downloadPng();
+}
+
+// 網頁直接出圖下載:POST 目前場景(含填入的變數值)→ server 子行程跑 CLI render → 回 PNG blob
+async function downloadPng() {
+  const btn = $('#download-btn') as HTMLButtonElement;
+  const statusEl = $('#dl-status');
+  const scale = Number(($('#dl-scale') as HTMLSelectElement).value) || 2;
+  const strict = ($('#strict-toggle') as HTMLInputElement).checked;
+  const data: Record<string, string> = {};
+  $('#export-vars')
+    .querySelectorAll<HTMLInputElement>('input[data-export-var]')
+    .forEach((inp) => {
+      const v = inp.value.trim();
+      if (v) data[inp.dataset.exportVar!] = v;
+    });
+
+  btn.disabled = true;
+  statusEl.className = '';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Rendering…';
+  try {
+    const res = await fetch('/api/render', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scene: scene(), data, strict, scale }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string };
+      statusEl.className = 'warn-strict';
+      statusEl.textContent = `Failed: ${err.error ?? res.status}`;
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${templateName}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Downloaded ✓';
+  } catch (e) {
+    statusEl.className = 'warn-strict';
+    statusEl.textContent = `Failed: ${String(e)}`;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ---------- Save / history modal ----------

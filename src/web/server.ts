@@ -4,13 +4,16 @@
 
 import http from 'node:http';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { validateTemplate } from '../core/scene/validate.js';
 import { parseProjectConfig, DEFAULT_PROJECT } from '../core/project.js';
 
 const DIST_WEB = path.dirname(fileURLToPath(import.meta.url));
+// CLI 進入點(D01:web 不 import cli 程式碼,改以子行程呼叫,出圖管線與 CLI 完全一致)
+const CLI_ENTRY = path.join(DIST_WEB, '..', 'cli', 'index.js');
 
 // ---- argv ----
 const argv = process.argv.slice(2);
@@ -165,7 +168,72 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     return;
   }
 
+  // POST /api/render → image/png(網頁直接下載出圖;D01:子行程跑 CLI render,管線與 CLI 一致)
+  // body: { scene, data?, strict?, scale? }
+  if (urlPath === '/api/render' && req.method === 'POST') {
+    let body: { scene?: unknown; data?: Record<string, unknown>; strict?: boolean; scale?: number };
+    try {
+      body = JSON.parse((await readBody(req)).toString('utf8'));
+    } catch {
+      send(res, 400, JSON.stringify({ error: 'body 不是合法 JSON' }));
+      return;
+    }
+    const result = validateTemplate(body.scene);
+    if (!result.ok) {
+      send(res, 400, JSON.stringify({ error: 'scene 驗證失敗', details: result.errors }));
+      return;
+    }
+    const scale = Math.min(4, Math.max(1, Math.round(Number(body.scale) || 2)));
+    const strict = body.strict === true;
+    const data = body.data && typeof body.data === 'object' ? body.data : {};
+
+    // temp 檔放 .tedit(才能讓 CLI 的 locateProject 找到 project.json、資產相對專案根解析)
+    const tmpDir = path.join(PROJECT_DIR, '.tedit');
+    await mkdir(tmpDir, { recursive: true });
+    const stamp = `render-${process.pid}-${historyTimestamp()}-${Math.floor(Math.random() * 1e6)}`;
+    const tplFile = path.join(tmpDir, `${stamp}.template.json`);
+    const dataFile = path.join(tmpDir, `${stamp}.json`); // JSON 是合法 YAML,CLI 直接吃
+    const outFile = path.join(tmpDir, `${stamp}.png`);
+    const cleanup = () => Promise.all([rm(tplFile, { force: true }), rm(dataFile, { force: true }), rm(outFile, { force: true })]);
+    try {
+      await writeFile(tplFile, JSON.stringify(body.scene));
+      await writeFile(dataFile, JSON.stringify(data));
+      const cliArgs = ['render', tplFile, dataFile, '-o', outFile, '--scale', String(scale)];
+      if (strict) cliArgs.push('--strict');
+      const { code, stderr } = await runCli(cliArgs);
+      if (code !== 0) {
+        // exit 4 = 缺變數(--strict);其餘渲染/資產錯
+        send(res, code === 4 ? 422 : 500, JSON.stringify({ error: stderr.trim() || `render exit ${code}`, code }));
+        return;
+      }
+      const png = await readFile(outFile);
+      res.writeHead(200, {
+        'content-type': 'image/png',
+        'content-disposition': 'attachment',
+        'content-length': png.length,
+      });
+      res.end(png);
+    } finally {
+      await cleanup();
+    }
+    return;
+  }
+
   send(res, 404, JSON.stringify({ error: 'unknown api' }));
+}
+
+/** 以子行程跑 CLI;回傳 exit code 與 stderr(出圖錯誤訊息) */
+function runCli(args: string[]): Promise<{ code: number; stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [CLI_ENTRY, ...args], {
+      cwd: PROJECT_DIR,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    child.stderr.on('data', (c: Buffer) => (stderr += c.toString()));
+    child.on('error', (e) => resolve({ code: 1, stderr: String(e) }));
+    child.on('exit', (code) => resolve({ code: code ?? 1, stderr }));
+  });
 }
 
 const server = http.createServer((req, res) => {
