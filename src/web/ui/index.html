@@ -37,6 +37,8 @@
     /* icon 按鈕(取代文字標籤;tooltip 在 title) */
     #toolbar .icon-btn { padding: 6px 9px; display: inline-flex; align-items: center; justify-content: center; }
     #toolbar .icon-btn svg { display: block; }
+    #toolbar button:disabled { opacity: .3; cursor: default; }
+    #toolbar button:disabled:hover { background: #333; }
     #toolbar .spacer { flex: 1; }
     /* 模板名 chip(可點 → Save/history modal) */
     .chip {
@@ -253,6 +255,10 @@
     <div class="tools">
       <button id="dup-btn" class="icon-btn" title="Duplicate ⌘D · Copy ⌘C · Cut ⌘X · Paste ⌘V" aria-label="Duplicate"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1.5"/><path d="M3 10.5V3.5a.5.5 0 0 1 .5-.5h7"/></svg></button>
       <button id="del-btn" class="icon-btn" title="Delete (Del/Backspace)" aria-label="Delete"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M5.5 4.5l.5 8h4l.5-8M6.5 4.5V3h3v1.5"/></svg></button>
+    </div>
+    <div class="tools">
+      <button id="undo-btn" class="icon-btn" title="Undo (⌘/Ctrl+Z)" aria-label="Undo" disabled><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4.5L3 8l3.5 3.5"/><path d="M3 8h6.5a3.2 3.2 0 0 1 0 6.4H7"/></svg></button>
+      <button id="redo-btn" class="icon-btn" title="Redo (⌘/Ctrl+Shift+Z)" aria-label="Redo" disabled><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4.5L13 8l-3.5 3.5"/><path d="M13 8H6.5a3.2 3.2 0 0 0 0 6.4H9"/></svg></button>
     </div>
     <span class="spacer"></span>
     <button id="tpl-chip" class="chip" title="Save & history (⌘/Ctrl+S to quick-save)">

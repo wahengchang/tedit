@@ -83,7 +83,7 @@ tedit/
 
 | # | 功能 | 狀態 | 觸碰熱區 | 可平行? | 備註 |
 |---|------|------|----------|---------|------|
-| B1 | undo / redo | ⬜ | editor.ts | 與其他 editor 功能互斥 | 場景快照堆疊;U1 已合併,editor.ts 釋出可開 |
+| B1 | undo / redo | ✅ | editor.ts | — | 場景快照堆疊(JSON 去重);⌘Z/⌘⇧Z/⌘Y + 工具列鈕(含 disabled 狀態);記錄點=commit()+畫布 object:modified/text:editing:exited;undo 連 canvas 尺寸一起還原;六關全綠、實機驗證 add→undo→redo |
 | B2 | 對齊輔助線 + 吸附 | ⬜ | editor.ts | 與 B1 互斥 | 純編輯器;U1 已合併,可開 |
 | B3 | 批次資料表量產(CSV) | ⬜ | 🟢 cli | 可平行 | 提案見 docs/interface-examples/A-proposal-batch.csv |
 | B4 | URL 圖片變數 | ⬜ | 🟢 resolver+cli | 可平行 | 下載/快取/逾時要研究 |
