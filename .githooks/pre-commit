@@ -1,0 +1,18 @@
+#!/bin/sh
+# Remove macOS-generated junk (AppleDouble ._* and .DS_Store) before each commit.
+# Installed via: git config core.hooksPath .githooks
+# Skips node_modules and the .git directory.
+
+found=$(find . \
+  -path ./node_modules -prune -o \
+  -path ./.git -prune -o \
+  \( -name '._*' -o -name '.DS_Store' \) -print 2>/dev/null)
+
+if [ -n "$found" ]; then
+  echo "$found" | while IFS= read -r f; do
+    [ -n "$f" ] && rm -f "$f" && git rm --quiet --cached --ignore-unmatch "$f" >/dev/null 2>&1
+  done
+  echo "pre-commit: removed macOS junk files (._* / .DS_Store)"
+fi
+
+exit 0
