@@ -33,7 +33,7 @@ tedit/
 ├── src/web/
 │   ├── server.ts                             ✅ 薄後端 REST5 + 上傳 + history                🟢 history 治理會動
 │   └── ui/index.html · editor.ts · headless.html  ✅ U1 重製(zoom/狀態列/modal/變數chip)      🔴 undo/群組/對齊輔助線擠 editor.ts
-├── 測試  test/run-unit · e2e/{parity,editor,e2e,compositor-parity} · e2eCli/run-cli  ✅ 六關全綠
+├── 測試  test/run-unit · e2e/{parity,editor,web-to-cli,e2e,compositor-parity} · e2eCli/run-cli  ✅ 七關全綠(加網頁→CLI 端到端)
 ├── examples/demo/                             ✅ card / multibind / html-card + 資料 + 一鍵腳本
 ├── examples/showcase/                          ✅ 應用場景範本:quote/event/crypto + 量產腳本(見 docs/USE-CASES.md)
 ├── spike/                                     ✅ M0 擂台 + 合成器 spike(歸檔)
