@@ -1,7 +1,7 @@
 // engine.bundle.js 入口 — 編輯器頁與 headless 頁共用同一份 bundle(D06/D11 結構保證)。
 // 對頁面暴露 window.teditEngine;渲染完成信號 = window.__renderDone(守門後才置真)。
 
-import { Canvas, StaticCanvas, type FabricObject } from 'fabric';
+import { Canvas, StaticCanvas, Pattern, type FabricObject } from 'fabric';
 import type { Template, SceneElement } from '../scene/types.js';
 import { load, save } from './fabric-mapping.js';
 import { loadFont, markRenderStart, markRenderDone } from './gate.js';
@@ -29,6 +29,11 @@ export interface EngineHandle {
   selectedId(): string | null;
   /** 訂閱「選取或物件變動」事件;回傳取消訂閱函式 */
   onChange(cb: () => void): () => void;
+  /**
+   * 編輯器:把 html 圖層佔位框的填充換成「即時渲染好的透明 PNG」(WYSIWYG);
+   * imageUrl=null → 還原虛線佔位框。內容點陣化成 fabric Pattern → z-order/控制柄/存檔都不變。
+   */
+  setHtmlPreview(id: string, imageUrl: string | null): Promise<void>;
 }
 
 function teditId(obj: FabricObject): string | undefined {
@@ -107,6 +112,41 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
       return () => {
         for (const e of events) canvas.off(e, cb);
       };
+    },
+    async setHtmlPreview(id, imageUrl) {
+      if (!(canvas instanceof Canvas)) return;
+      const obj = canvas.getObjects().find((o) => teditId(o) === id);
+      if (!obj) return;
+      if (!imageUrl) {
+        // 還原虛線佔位框(與 fabric-mapping.htmlPlaceholder 一致)
+        obj.set({ fill: 'rgba(120,120,140,0.18)', stroke: '#8a8aa0', strokeDashArray: [6, 4] });
+        canvas.requestRenderAll();
+        return;
+      }
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => reject(new Error('preview image load failed'));
+        im.src = imageUrl;
+      });
+      // 把縮放「烘平」回 scale=1:用控制柄縮放後,物件是 width 不變、scaleX≠1;
+      // 但新 PNG 是依「顯示尺寸」算的,若不烘平,pattern(no-repeat)只會填到角落 → 內容縮在左上。
+      // 烘平成 width=顯示尺寸、scale=1(origin=center 故位置不變),pattern 才剛好鋪滿。
+      const m = obj as unknown as { width: number; height: number; scaleX: number; scaleY: number };
+      const w = m.width * m.scaleX;
+      const h = m.height * m.scaleY;
+      // 透明 PNG → Pattern 填進佔位框:仍是同一物件,z-order/控制柄/save 全不變
+      obj.set({
+        width: w,
+        height: h,
+        scaleX: 1,
+        scaleY: 1,
+        fill: new Pattern({ source: img, repeat: 'no-repeat' }),
+        stroke: 'rgba(138,138,160,0.45)',
+        strokeDashArray: [],
+      });
+      obj.setCoords();
+      canvas.requestRenderAll();
     },
   };
 }

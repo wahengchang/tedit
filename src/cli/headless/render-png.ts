@@ -103,7 +103,10 @@ export async function renderScenePng(opts: RenderOptions): Promise<Buffer> {
       throw new AssetLoadError(e instanceof Error ? e.message : String(e));
     }
     await page.waitForFunction(() => window.__renderDone === true);
-    const buf = await page.locator('#stage').screenshot();
+    // I2:HTML/JS 圖層可拓網路 → 截圖前等網路閒置(bounded,逾時不卡死)
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => undefined);
+    // omitBackground:畫布背景為 transparent 時輸出去背 PNG;實色背景已填滿故不受影響(E5)
+    const buf = await page.locator('#stage').screenshot({ omitBackground: true });
     return Buffer.from(buf);
   } finally {
     await browser.close();

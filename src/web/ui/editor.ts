@@ -140,6 +140,9 @@ async function init() {
   const badgeLayer = document.createElement('div');
   badgeLayer.id = 'badge-layer';
   $('#stage').appendChild(badgeLayer);
+  const renderOverlay = document.createElement('div');
+  renderOverlay.id = 'render-overlay';
+  $('#stage').appendChild(renderOverlay);
 
   // 載入即「符合視窗」:大畫布(如 1920px)在 100% 會爆出工作區,fitZoom 縮到剛好放得下;
   // fitZoom 上限 100%,小畫布維持 1:1 不被放大。(loadScene 已把 canvas 設成 design)
@@ -176,6 +179,98 @@ function renderAll() {
   renderStatus();
   renderVarChip();
   updateHistoryButtons();
+  scheduleHtmlPreviews();
+}
+
+// ---------- HTML/JS 圖層即時預覽(WYSIWYG)----------
+// 把每個 html 圖層送「單元素 + 透明畫布」mini-scene 給 /api/render(子行程跑真出圖引擎,
+// 含 allow-scripts/settle/透明)→ 回透明 PNG → 點陣化進佔位框(engine.setHtmlPreview)。
+// 內容/尺寸沒變不重畫(hash 略過);改動後 debounce,避免每次選取都重出圖。
+let previewTimer: ReturnType<typeof setTimeout> | undefined;
+const previewUrls = new Map<string, string>();
+const previewHash = new Map<string, string>();
+
+function scheduleHtmlPreviews() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => void refreshHtmlPreviews(), 400);
+}
+
+async function refreshHtmlPreviews() {
+  const s = scene();
+  const liveIds = new Set<string>();
+  for (const el of s.elements) {
+    if (el.type !== 'html') continue;
+    liveIds.add(el.id);
+    const w = Math.max(1, Math.round(el.width));
+    const h = Math.max(1, Math.round(el.height));
+    const key = JSON.stringify([el.html ?? el.src ?? '', w, h]); // 旋轉/位置不影響內容
+    if (previewHash.get(el.id) === key) continue; // 內容+尺寸沒變 → 不重出圖
+    previewHash.set(el.id, key);
+    // 單元素鋪平(rotation/位置歸零;佔位框自身的 angle 會把點陣轉回來)
+    const mini: Template = {
+      teditVersion: '0.1',
+      canvas: { width: w, height: h, background: 'transparent' },
+      elements: [{ ...el, x: 0, y: 0, rotation: 0, width: w, height: h }],
+      bindings: [],
+    };
+    showRenderSpinner(el.id); // 轉圈提示:讓使用者知道在算、不是壞了
+    try {
+      const res = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scene: mini, data: {}, scale: 1 }),
+      });
+      if (!res.ok) {
+        previewHash.delete(el.id); // 失敗 → 下次再試
+        continue;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      await handle.setHtmlPreview(el.id, url);
+      const old = previewUrls.get(el.id);
+      if (old) URL.revokeObjectURL(old);
+      previewUrls.set(el.id, url);
+    } catch {
+      previewHash.delete(el.id); // 預覽失敗不致命
+    } finally {
+      hideRenderSpinner(el.id);
+    }
+  }
+  // 清掉已刪除圖層的快取
+  for (const id of [...previewUrls.keys()]) {
+    if (liveIds.has(id)) continue;
+    const u = previewUrls.get(id);
+    if (u) URL.revokeObjectURL(u);
+    previewUrls.delete(id);
+    previewHash.delete(id);
+  }
+}
+
+// 出圖轉圈提示:放在該 html 圖層中心(fabric 物件 left/top 為中心 × zoom)
+function htmlObjCenter(id: string): { x: number; y: number } | null {
+  for (const o of (handle.canvas as unknown as FCanvas).getObjects()) {
+    const oo = o as unknown as { teditId?: string; left: number; top: number };
+    if (oo.teditId === id) return { x: oo.left * zoom, y: oo.top * zoom };
+  }
+  return null;
+}
+function showRenderSpinner(id: string) {
+  const overlay = document.getElementById('render-overlay');
+  if (!overlay) return;
+  let sp = overlay.querySelector<HTMLElement>(`[data-spin="${id}"]`);
+  if (!sp) {
+    sp = document.createElement('div');
+    sp.className = 'render-spin';
+    sp.dataset.spin = id;
+    overlay.appendChild(sp);
+  }
+  const c = htmlObjCenter(id);
+  if (c) {
+    sp.style.left = `${c.x}px`;
+    sp.style.top = `${c.y}px`;
+  }
+}
+function hideRenderSpinner(id: string) {
+  document.getElementById('render-overlay')?.querySelector(`[data-spin="${id}"]`)?.remove();
 }
 
 // ---------- zoom(純視圖;座標不變)----------
@@ -477,13 +572,17 @@ function renderProps() {
     html += colorF('Stroke', 'stroke', el.stroke);
     html += numF('Stroke W', 'strokeWidth', el.strokeWidth);
   } else {
-    // html 元素(D22):佔位框在畫布上可拖/縮放;內容在此貼上(inline)或顯示檔案來源
+    // html 元素(D22):畫布上顯示即時渲染預覽(可拖/縮放);內容貼上(inline)或本地檔路徑
     if (typeof el.src === 'string') {
-      html += `<div class="prop"><span>HTML file</span><b>${el.src}</b></div>`;
+      html += `<label class="prop"><span>HTML file</span><input data-k="src" type="text" value="${escapeHtml(el.src)}"></label>`;
     } else {
       html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
-    html += `<div class="prop"><span></span><small style="color:var(--muted)">Rendered at export; placeholder shown on canvas</small></div>`;
+    html += `<div class="prop"><span></span><span style="display:flex;gap:6px;width:100%">` +
+      `<button type="button" class="prop-edit-btn" data-html-edit="1" style="flex:1">✎ Edit HTML…</button>` +
+      `<button type="button" class="prop-edit-btn" data-html-refresh="1" title="Refresh preview" style="flex:none;width:40px">⟳</button>` +
+      `</span></div>`;
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">Live preview on canvas · pure HTML/CSS/JS, transparent body, self-contained assets</small></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
@@ -573,6 +672,115 @@ function wireProps() {
   const panel = $('#props-body');
   const onEdit = (e: Event) => void applyPropEdit(e);
   panel.addEventListener('change', onEdit);
+  // html 圖層「✎ Edit HTML…」→ 開 Modal;「⟳」→ 強制重畫該層預覽
+  panel.addEventListener('click', (e) => {
+    const ds = (e.target as HTMLElement)?.dataset;
+    if (ds?.htmlEdit) void openHtmlEditModal();
+    else if (ds?.htmlRefresh) forceRefreshSelectedHtml();
+  });
+}
+
+// ⟳:清掉該層預覽快取 → 立刻重畫(src 檔在外部改過、或想手動刷新時用)
+function forceRefreshSelectedHtml() {
+  const id = handle.selectedId();
+  if (!id) return;
+  previewHash.delete(id);
+  void refreshHtmlPreviews();
+}
+
+// ---------- HTML 圖層編輯 Modal ----------
+// 統一規則:inline 與 src 兩種都能在同一個 Modal 編輯,永不卡唯讀。
+// inline → 載入 el.html;src → fetch 檔案內容載入。一旦 Done 一律存成 inline(src 層編過即脫鉤原檔)。
+let htmlEditId: string | null = null;
+let htmlEditTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function openHtmlEditModal() {
+  const el = selectedElement();
+  if (!el || el.type !== 'html') return;
+  htmlEditId = el.id;
+  const W = Math.max(1, Math.round(el.width));
+  const H = Math.max(1, Math.round(el.height));
+  ($('#he-dim') as HTMLElement).textContent = `${W} × ${H}`;
+  const code = $('#he-code') as HTMLTextAreaElement;
+  // 載入內容:inline 直接用字串;src 去 fetch 那個檔(載進來編輯 → Done 轉 inline)
+  let content = el.html ?? '';
+  if (typeof el.src === 'string') {
+    try {
+      content = await (await fetch('/' + el.src.replace(/^\//, ''))).text();
+    } catch {
+      content = `<!-- 載入 ${el.src} 失敗,可直接在此重寫 -->`;
+    }
+  }
+  code.value = content;
+  const frame = $('#he-frame') as HTMLIFrameElement;
+  const hl = $('#he-hl') as HTMLElement;
+  const syncHighlight = () => {
+    hl.innerHTML = highlightHtml(code.value);
+    hl.scrollTop = code.scrollTop;
+    hl.scrollLeft = code.scrollLeft;
+  };
+  const renderPrev = () => {
+    frame.srcdoc = code.value;
+  };
+  code.oninput = () => {
+    syncHighlight(); // 高亮即時跟
+    clearTimeout(htmlEditTimer);
+    htmlEditTimer = setTimeout(renderPrev, 180); // 預覽 debounce
+  };
+  code.onscroll = () => {
+    hl.scrollTop = code.scrollTop;
+    hl.scrollLeft = code.scrollLeft;
+  };
+  openModal('html-modal');
+  sizeHtmlEditFrame(W, H); // modal 已開 → prevwrap 有尺寸可量
+  syncHighlight();
+  renderPrev();
+  code.focus();
+}
+
+// 零依賴 HTML 語法高亮(供編輯器疊層用)。先 escape,再上色:註解 / 標籤名 / 屬性名 / 字串值。
+// 不解析 <style>/<script> 內部(留原樣文字),正則誤判也只是少上色、不會壞顯示。
+function highlightHtml(src: string): string {
+  let s = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s = s.replace(/&lt;!--[\s\S]*?--&gt;/g, (m) => `<span class="hl-com">${m}</span>`);
+  s = s.replace(/(&lt;\/?)([a-zA-Z][\w-]*)([\s\S]*?)(\/?&gt;)/g, (_m, open, tag, attrs, close) => {
+    const a = attrs.replace(
+      /([\w-]+)(=)(&quot;[^&]*&quot;|"[^"]*"|'[^']*')/g,
+      (_mm: string, n: string, eq: string, v: string) => `<span class="hl-attr">${n}</span>${eq}<span class="hl-str">${v}</span>`,
+    );
+    return `${open}<span class="hl-tag">${tag}</span>${a}${close}`;
+  });
+  return s;
+}
+
+// 把 W×H 的 iframe 等比縮到預覽 pane 內(transform scale;忠實呈現固定尺寸)
+function sizeHtmlEditFrame(W: number, H: number) {
+  const wrap = $('#html-modal .he-prevwrap') as HTMLElement;
+  const scaler = $('#he-scaler') as HTMLElement;
+  const frame = $('#he-frame') as HTMLElement;
+  const pad = 32;
+  const s = Math.min(1, (wrap.clientWidth - pad) / W, (wrap.clientHeight - pad) / H) || 1;
+  frame.style.width = `${W}px`;
+  frame.style.height = `${H}px`;
+  frame.style.transform = `scale(${s})`;
+  frame.style.transformOrigin = 'top left';
+  scaler.style.width = `${W * s}px`;
+  scaler.style.height = `${H * s}px`;
+}
+
+// Done:把編輯內容存回該層(一律 inline);src 層編過即轉 inline(脫鉤原共用檔)
+async function commitHtmlEdit() {
+  if (!htmlEditId) return;
+  const id = htmlEditId;
+  const s = scene();
+  const el = s.elements.find((e) => e.id === id);
+  if (el && el.type === 'html') {
+    el.html = ($('#he-code') as HTMLTextAreaElement).value;
+    delete (el as { src?: string }).src; // 統一存 inline
+    await commit(s, id);
+  }
+  htmlEditId = null;
+  closeModal('html-modal');
 }
 
 async function applyPropEdit(e: Event) {
@@ -928,6 +1136,7 @@ function wireModals() {
   $('#save-confirm').onclick = () => void saveFromModal();
   $('#strict-toggle').addEventListener('change', renderExportPreview);
   $('#download-btn').onclick = () => void downloadPng();
+  $('#he-done').onclick = () => void commitHtmlEdit();
 }
 
 // 網頁直接出圖下載:POST 目前場景(含填入的變數值)→ server 子行程跑 CLI render → 回 PNG blob

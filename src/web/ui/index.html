@@ -167,6 +167,40 @@
       padding: 7px 16px; border-radius: 6px; cursor: pointer;
     }
     .modal-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    /* HTML 圖層編輯按鈕(屬性面板;深色,取代之前的白底按鈕) */
+    .prop-edit-btn {
+      font: inherit; color: var(--text); background: var(--panel2, #2d2d2e); border: 1px solid var(--border);
+      padding: 7px 12px; border-radius: 6px; cursor: pointer; width: 100%;
+    }
+    .prop-edit-btn:hover { background: #353537; }
+    /* HTML 圖層編輯 Modal(左固定尺寸即時預覽 + 右可編輯代碼)*/
+    .modal.wide { width: 1000px; max-width: 94vw; height: 600px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; }
+    .modal.wide .modal-head { padding: 12px 16px; }
+    .he-body { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+    .he-pane { min-height: 0; display: flex; flex-direction: column; }
+    .he-pane + .he-pane { border-left: 1px solid var(--border); }
+    .he-ph { padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+    .he-prevwrap { flex: 1; min-height: 0; display: grid; place-items: center; overflow: auto;
+      background-image: linear-gradient(45deg,#2a2a2a 25%,transparent 25%),linear-gradient(-45deg,#2a2a2a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2a2a 75%),linear-gradient(-45deg,transparent 75%,#2a2a2a 75%);
+      background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #202020; }
+    #he-scaler { overflow: hidden; flex: none; }
+    #he-frame { border: 0; background: transparent; display: block; }
+    /* 代碼編輯器:透明 textarea 疊在語法高亮 <pre> 上(零依賴 highlight) */
+    .he-codewrap { flex: 1; min-height: 0; position: relative; }
+    #he-hl, #he-code {
+      position: absolute; inset: 0; margin: 0; border: 0; padding: 14px;
+      font: 13px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+      overflow: auto; tab-size: 2;
+    }
+    #he-hl { background: #1b1b1b; color: #cfe3ff; pointer-events: none; }
+    #he-code { background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
+    .hl-tag { color: #c678dd; } .hl-attr { color: #d19a66; } .hl-str { color: #98c379; } .hl-com { color: #5c6370; font-style: italic; }
+    .modal.wide .modal-actions { padding: 10px 16px; border-top: 1px solid var(--border); margin: 0; }
+    /* 出圖預覽中的轉圈提示(蓋在該 html 圖層上,讓使用者知道在算、不是壞了) */
+    #render-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+    .render-spin { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+      border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: tspin .7s linear infinite; }
+    @keyframes tspin { to { transform: rotate(360deg); } }
     .hist-list { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--border); }
     .hist-list li { padding: 7px 2px; border-bottom: 1px solid #303030; color: var(--text); font-variant-numeric: tabular-nums; }
     .hist-list .empty { padding: 10px 2px; }
@@ -320,6 +354,30 @@
           </select>
         </label>
         <div class="modal-actions"><button class="primary" data-close="doc-modal">Done</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HTML 圖層編輯 Modal(屬性面板 Edit 鈕開):左固定尺寸即時預覽 + 右可編輯代碼 -->
+  <div id="html-modal" class="modal-backdrop">
+    <div class="modal wide" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>Edit HTML</h3>
+        <button class="modal-close" data-close="html-modal">×</button>
+      </div>
+      <div class="he-body">
+        <div class="he-pane">
+          <div class="he-ph"><span>Preview</span><span id="he-dim"></span></div>
+          <div class="he-prevwrap"><div id="he-scaler"><iframe id="he-frame" sandbox="allow-scripts allow-same-origin"></iframe></div></div>
+        </div>
+        <div class="he-pane">
+          <div class="he-ph"><span>HTML code</span><span>live</span></div>
+          <div class="he-codewrap"><pre id="he-hl" aria-hidden="true"></pre><textarea id="he-code" spellcheck="false"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button data-close="html-modal">Cancel</button>
+        <button class="primary" id="he-done">Done</button>
       </div>
     </div>
   </div>
