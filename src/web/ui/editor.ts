@@ -198,6 +198,21 @@ function changeZoom(z: number) {
   applyZoom();
 }
 
+/** 縮放並把游標下的同一個畫布點釘在原位(以滑鼠為錨)。 */
+function zoomAt(z: number, clientX: number, clientY: number) {
+  const stage = $('#stage');
+  const wrap = $('#canvas-wrap');
+  const before = stage.getBoundingClientRect();
+  // 游標對應的畫布內容座標(design px,與 zoom 無關)
+  const cx = (clientX - before.left) / zoom;
+  const cy = (clientY - before.top) / zoom;
+  changeZoom(z); // 重設 stage 尺寸(可能因置中而位移)→ 讀新 rect 再補回捲動
+  const next = Math.min(Z_MAX, Math.max(Z_MIN, z)); // changeZoom 夾過的實際值
+  const after = stage.getBoundingClientRect();
+  wrap.scrollLeft += after.left + cx * next - clientX;
+  wrap.scrollTop += after.top + cy * next - clientY;
+}
+
 /** 符合視窗:把整張紙縮到工作區內(不放大超過 100%) */
 function fitZoom() {
   const wrap = $('#canvas-wrap');
@@ -211,6 +226,17 @@ function wireZoom() {
   $('#zoom-out').onclick = () => changeZoom(zoom / 1.25);
   // 點百分比:非 100% → 回 100%;已是 100% → 符合視窗
   $('#zoom-pct').onclick = () => (Math.abs(zoom - 1) < 0.001 ? fitZoom() : changeZoom(1));
+
+  // 滑鼠滾輪 / 觸控板雙指 → 以游標為錨縮放(deltaY<0 放大)。
+  // passive:false 才能 preventDefault 阻止頁面捲動;指數步進讓縮放手感平滑。
+  $('#canvas-wrap').addEventListener(
+    'wheel',
+    (e: WheelEvent) => {
+      e.preventDefault();
+      zoomAt(zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+    },
+    { passive: false },
+  );
 }
 
 // ---------- 狀態列 ----------
