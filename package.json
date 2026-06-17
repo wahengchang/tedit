@@ -2,11 +2,14 @@
   "name": "tedit",
   "version": "0.0.1",
   "description": "Local visual template editor: design in browser, render PNG headlessly via CLI",
-  "private": true,
   "type": "module",
   "bin": {
     "tedit": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -23,7 +26,7 @@
     "test:editor": "node e2e/run-editor.mjs",
     "test:e2e": "node e2e/run-e2e.mjs",
     "test:compositor": "node e2e/run-compositor-parity.mjs",
-    "spike": "node spike/run-spike.mjs"
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=20"

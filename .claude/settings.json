@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "find . -path ./node_modules -prune -o -path ./.git -prune -o \\( -name '._*' -o -name '.DS_Store' \\) -print0 2>/dev/null | xargs -0 rm -f 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
