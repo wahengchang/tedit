@@ -180,6 +180,67 @@ function renderAll() {
   renderStatus();
   renderVarChip();
   updateHistoryButtons();
+  scheduleHtmlPreviews();
+}
+
+// ---------- HTML/JS 圖層即時預覽(WYSIWYG)----------
+// 把每個 html 圖層送「單元素 + 透明畫布」mini-scene 給 /api/render(子行程跑真出圖引擎,
+// 含 allow-scripts/settle/透明)→ 回透明 PNG → 點陣化進佔位框(engine.setHtmlPreview)。
+// 內容/尺寸沒變不重畫(hash 略過);改動後 debounce,避免每次選取都重出圖。
+let previewTimer: ReturnType<typeof setTimeout> | undefined;
+const previewUrls = new Map<string, string>();
+const previewHash = new Map<string, string>();
+
+function scheduleHtmlPreviews() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => void refreshHtmlPreviews(), 400);
+}
+
+async function refreshHtmlPreviews() {
+  const s = scene();
+  const liveIds = new Set<string>();
+  for (const el of s.elements) {
+    if (el.type !== 'html') continue;
+    liveIds.add(el.id);
+    const w = Math.max(1, Math.round(el.width));
+    const h = Math.max(1, Math.round(el.height));
+    const key = JSON.stringify([el.html ?? el.src ?? '', w, h]); // 旋轉/位置不影響內容
+    if (previewHash.get(el.id) === key) continue; // 內容+尺寸沒變 → 不重出圖
+    previewHash.set(el.id, key);
+    // 單元素鋪平(rotation/位置歸零;佔位框自身的 angle 會把點陣轉回來)
+    const mini: Template = {
+      teditVersion: '0.1',
+      canvas: { width: w, height: h, background: 'transparent' },
+      elements: [{ ...el, x: 0, y: 0, rotation: 0, width: w, height: h }],
+      bindings: [],
+    };
+    try {
+      const res = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scene: mini, data: {}, scale: 1 }),
+      });
+      if (!res.ok) {
+        previewHash.delete(el.id); // 失敗 → 下次再試
+        continue;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      await handle.setHtmlPreview(el.id, url);
+      const old = previewUrls.get(el.id);
+      if (old) URL.revokeObjectURL(old);
+      previewUrls.set(el.id, url);
+    } catch {
+      previewHash.delete(el.id); // 預覽失敗不致命
+    }
+  }
+  // 清掉已刪除圖層的快取
+  for (const id of [...previewUrls.keys()]) {
+    if (liveIds.has(id)) continue;
+    const u = previewUrls.get(id);
+    if (u) URL.revokeObjectURL(u);
+    previewUrls.delete(id);
+    previewHash.delete(id);
+  }
 }
 
 // ---------- zoom(純視圖;座標不變)----------
@@ -481,13 +542,13 @@ function renderProps() {
     html += colorF('Stroke', 'stroke', el.stroke);
     html += numF('Stroke W', 'strokeWidth', el.strokeWidth);
   } else {
-    // html 元素(D22):佔位框在畫布上可拖/縮放;內容在此貼上(inline)或顯示檔案來源
+    // html 元素(D22):畫布上顯示即時渲染預覽(可拖/縮放);內容貼上(inline)或本地檔路徑
     if (typeof el.src === 'string') {
-      html += `<div class="prop"><span>HTML file</span><b>${el.src}</b></div>`;
+      html += `<label class="prop"><span>HTML file</span><input data-k="src" type="text" value="${escapeHtml(el.src)}"></label>`;
     } else {
       html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
-    html += `<div class="prop"><span></span><small style="color:var(--muted)">Rendered at export; placeholder shown on canvas</small></div>`;
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">Live preview on canvas · pure HTML/CSS/JS, transparent body, self-contained assets</small></div>`;
   }
 
   // 綁定區(S04:面板開關 + 變數名);僅 text.content / image.src 可綁
