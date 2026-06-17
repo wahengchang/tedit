@@ -129,8 +129,23 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
         im.onerror = () => reject(new Error('preview image load failed'));
         im.src = imageUrl;
       });
+      // 把縮放「烘平」回 scale=1:用控制柄縮放後,物件是 width 不變、scaleX≠1;
+      // 但新 PNG 是依「顯示尺寸」算的,若不烘平,pattern(no-repeat)只會填到角落 → 內容縮在左上。
+      // 烘平成 width=顯示尺寸、scale=1(origin=center 故位置不變),pattern 才剛好鋪滿。
+      const m = obj as unknown as { width: number; height: number; scaleX: number; scaleY: number };
+      const w = m.width * m.scaleX;
+      const h = m.height * m.scaleY;
       // 透明 PNG → Pattern 填進佔位框:仍是同一物件,z-order/控制柄/save 全不變
-      obj.set({ fill: new Pattern({ source: img, repeat: 'no-repeat' }), stroke: 'rgba(138,138,160,0.45)', strokeDashArray: [] });
+      obj.set({
+        width: w,
+        height: h,
+        scaleX: 1,
+        scaleY: 1,
+        fill: new Pattern({ source: img, repeat: 'no-repeat' }),
+        stroke: 'rgba(138,138,160,0.45)',
+        strokeDashArray: [],
+      });
+      obj.setCoords();
       canvas.requestRenderAll();
     },
   };
