@@ -92,6 +92,23 @@ try {
   const hist = existsSync(histDir) ? readdirSync(histDir).filter((f) => f.startsWith('card.')) : [];
   check('history 寫了一份時間戳副本', hist.length === 1, JSON.stringify(hist));
 
+  // 5a. B2 對齊吸附:把 img1 中心拖到「畫布垂直中線右 2px」→ 應吸附回正中(center==W/2)。
+  // 沒吸附時 center 會停在 W/2+2(差 2px),吸附後精準歸零 → ≤1px 即證明吸附生效(zoom=1,screen==design)。
+  {
+    const W = saved.canvas.width;
+    const cxNow = img.x + img.width / 2;
+    const cyNow = img.y + img.height / 2;
+    await page.mouse.move(stage.x + cxNow, stage.y + cyNow);
+    await page.mouse.down();
+    await page.mouse.move(stage.x + W / 2 + 2, stage.y + cyNow, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    const sSnap = await saveAndRead();
+    const im2 = sSnap.elements.find((e) => e.id === 'img1');
+    const centerX = im2.x + im2.width / 2;
+    check('拖近中線 → 吸附到畫布正中(center==W/2)', Math.abs(centerX - W / 2) <= 1, `centerX=${centerX} W/2=${W / 2}`);
+  }
+
   // 5b. 文字行內編輯(txt1 在最上層,雙擊進編輯態打字)
   await page.mouse.dblclick(stage.x + 300, stage.y + 160);
   await page.waitForTimeout(250);
