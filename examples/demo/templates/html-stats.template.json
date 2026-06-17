@@ -1,0 +1,21 @@
+{
+  "teditVersion": "0.1",
+  "canvas": {
+    "width": 1000,
+    "height": 320,
+    "background": "#0b1020"
+  },
+  "elements": [
+    {
+      "id": "stats",
+      "type": "html",
+      "x": 40,
+      "y": 50,
+      "width": 920,
+      "height": 220,
+      "rotation": 0,
+      "src": "assets/html/stats.html"
+    }
+  ],
+  "bindings": []
+}

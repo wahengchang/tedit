@@ -1,0 +1,21 @@
+{
+  "teditVersion": "0.1",
+  "canvas": {
+    "width": 520,
+    "height": 640,
+    "background": "#eef2f7"
+  },
+  "elements": [
+    {
+      "id": "card",
+      "type": "html",
+      "x": 60,
+      "y": 40,
+      "width": 400,
+      "height": 560,
+      "rotation": 0,
+      "src": "assets/html/pricing.html"
+    }
+  ],
+  "bindings": []
+}

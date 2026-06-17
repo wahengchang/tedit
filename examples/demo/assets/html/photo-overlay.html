@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<style>
+  @font-face{ font-family:'Noto Sans TC'; src:url('/assets/fonts/NotoSansTC-Regular.otf'); }
+  html,body{ margin:0; width:100%; height:100%; }
+  body{ position:relative; overflow:hidden; font-family:'Noto Sans TC',sans-serif;
+        background:#000 url('/assets/images/test-photo.png') center/cover no-repeat; }
+  .scrim{ position:absolute; inset:0;
+          background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,0) 55%); }
+  .cap{ position:absolute; left:48px; right:48px; bottom:44px; color:#fff; z-index:1; }
+  .tag{ display:inline-block; background:#f43f5e; padding:4px 12px;
+        border-radius:999px; font-size:16px; margin-bottom:14px; }
+  .cap h2{ margin:0 0 8px; font-size:48px; font-weight:800; }
+  .cap p{ margin:0; font-size:22px; opacity:.85; }
+</style></head>
+<body>
+  <div class="scrim"></div>
+  <div class="cap">
+    <span class="tag">FEATURED</span>
+    <h2>照片 + 漸層遮罩 + 標題</h2>
+    <p>整塊版面用一層 HTML 完成(原生圖層較難)</p>
+  </div>
+</body></html>
