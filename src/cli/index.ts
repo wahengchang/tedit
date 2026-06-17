@@ -7,10 +7,10 @@ import { runRender } from './render.js';
 import { runVars } from './vars.js';
 import { runUi } from './ui.js';
 
-const USAGE = `用法:
-  tedit ui [--port <n>] [--dir <path>] [--no-open]
-  tedit render <template> <data> [-o <out.png>] [--scale <n>] [--strict]
-  tedit vars <template> [--json]
+const USAGE = `用法(D23:一資料夾一專案一模板;<project> = 資料夾或其 template.json):
+  tedit ui [<project>] [--port <n>] [--no-open]
+  tedit render <project> [<data>] [-o <out.png>] [--scale <n>] [--strict]
+  tedit vars <project> [--json]
 
 退出碼:0 成功 / 1 其他錯誤 / 2 參數錯誤 / 3 模板錯誤 / 4 缺變數(--strict) / 5 資產載入失敗`;
 
@@ -58,12 +58,14 @@ async function main(): Promise<void> {
 
   switch (cmd) {
     case 'ui': {
+      // D23:位置參數 = 專案資料夾(預設目前目錄);--dir 仍可用(同義,位置參數優先)
       const p = parseArgv(rest, new Set(['--port', '--dir']));
       rejectUnknownFlags(p, ['--port', '--dir', '--no-open']);
-      if (p.positional.length > 0) throw new CliError(EXIT.ARGS, `ui 不接受位置參數:${p.positional.join(' ')}`);
+      const [dirPos, ...extra] = p.positional;
+      if (extra.length > 0) throw new CliError(EXIT.ARGS, `多餘參數:${extra.join(' ')}`);
       runUi({
         port: parseNumberFlag(p, '--port', 5173),
-        dir: (p.flags.get('--dir') as string) ?? './',
+        dir: dirPos ?? (p.flags.get('--dir') as string) ?? './',
         open: !p.flags.has('--no-open'),
       });
       return;
@@ -72,15 +74,15 @@ async function main(): Promise<void> {
       const p = parseArgv(rest, new Set(['-o', '--out', '--scale', '--dir']));
       rejectUnknownFlags(p, ['-o', '--out', '--scale', '--strict', '--dir']);
       const [template, data, ...extra] = p.positional;
-      if (!template || !data) throw new CliError(EXIT.ARGS, `render 需要 <template> 與 <data>\n${USAGE}`);
+      if (!template) throw new CliError(EXIT.ARGS, `render 需要 <project>(資料夾或 template.json)\n${USAGE}`);
       if (extra.length > 0) throw new CliError(EXIT.ARGS, `多餘參數:${extra.join(' ')}`);
       await runRender({
         template,
-        data,
+        ...(data !== undefined ? { data } : {}), // 資料檔可選(exactOptionalPropertyTypes:不傳 undefined)
         out: (p.flags.get('-o') as string) ?? (p.flags.get('--out') as string) ?? './out.png',
         scale: parseNumberFlag(p, '--scale', 1),
         strict: p.flags.has('--strict'),
-        // --dir:明確指定專案根(web /api/render 用;不給則沿用 locateProject 往上找)
+        // --dir:明確指定專案根(web /api/render 用;不給則 = 模板所在資料夾)
         projectDir: (p.flags.get('--dir') as string) ?? undefined,
       });
       return;

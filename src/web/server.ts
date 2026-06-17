@@ -60,9 +60,6 @@ function readBody(req: http.IncomingMessage): Promise<Buffer> {
   });
 }
 
-/** 模板名白名單(防路徑跳脫):字母數字、-、_、CJK */
-const SAFE_NAME = /^[\w一-鿿-]+$/;
-
 function historyTimestamp(d = new Date()): string {
   const p = (n: number, l = 2) => String(n).padStart(l, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
@@ -85,30 +82,16 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     return;
   }
 
-  // GET /api/templates
-  if (urlPath === '/api/templates' && req.method === 'GET') {
-    const dir = path.join(PROJECT_DIR, 'templates');
-    const names = existsSync(dir)
-      ? (await readdir(dir)).filter((f) => f.endsWith('.template.json')).map((f) => f.replace(/\.template\.json$/, ''))
-      : [];
-    send(res, 200, JSON.stringify(names));
-    return;
-  }
+  // D23:單一 template.json(無列表、無名字定址)
+  const TEMPLATE_FILE = path.join(PROJECT_DIR, 'template.json');
+  const HIST_DIR = path.join(PROJECT_DIR, '.tedit', 'history');
 
-  // GET /api/templates/:name/history(U1:Save modal 列歷史副本;唯讀,D10 寫入不變)
-  const histMatch = urlPath.match(/^\/api\/templates\/([^/]+)\/history$/);
-  if (histMatch && req.method === 'GET') {
-    const name = decodeURIComponent(histMatch[1]!);
-    if (!SAFE_NAME.test(name)) {
-      send(res, 400, JSON.stringify({ error: '模板名只允許字母數字、-、_、CJK' }));
-      return;
-    }
-    const histDir = path.join(PROJECT_DIR, '.tedit', 'history');
-    const prefix = `${name}.`;
-    const stamps = existsSync(histDir)
-      ? (await readdir(histDir))
-          .filter((f) => f.startsWith(prefix) && f.endsWith('.json'))
-          .map((f) => f.slice(prefix.length, -'.json'.length))
+  // GET /api/template/history(Save modal 列歷史副本;唯讀,D10 寫入不變)
+  if (urlPath === '/api/template/history' && req.method === 'GET') {
+    const stamps = existsSync(HIST_DIR)
+      ? (await readdir(HIST_DIR))
+          .filter((f) => f.endsWith('.json'))
+          .map((f) => f.slice(0, -'.json'.length))
           .sort()
           .reverse() // 最新在上(時間戳字典序 = 時間序)
       : [];
@@ -116,17 +99,11 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     return;
   }
 
-  // GET / PUT /api/templates/:name
-  const tplMatch = urlPath.match(/^\/api\/templates\/([^/]+)$/);
-  if (tplMatch) {
-    const name = decodeURIComponent(tplMatch[1]!);
-    if (!SAFE_NAME.test(name)) {
-      send(res, 400, JSON.stringify({ error: '模板名只允許字母數字、-、_、CJK' }));
-      return;
-    }
-    const file = path.join(PROJECT_DIR, 'templates', `${name}.template.json`);
+  // GET / PUT /api/template — 該專案夾的唯一模板
+  if (urlPath === '/api/template') {
     if (req.method === 'GET') {
-      sendFile(res, file);
+      // 不存在 → 404,讓編輯器以空白模板開新(首存即建檔)
+      sendFile(res, TEMPLATE_FILE);
       return;
     }
     if (req.method === 'PUT') {
@@ -143,28 +120,26 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
         return;
       }
       const body = JSON.stringify(parsed, null, 2) + '\n';
-      await mkdir(path.dirname(file), { recursive: true });
-      await writeFile(file, body);
-      // D10 history 快照:全量副本、不清理不去重
-      const histDir = path.join(PROJECT_DIR, '.tedit', 'history');
-      await mkdir(histDir, { recursive: true });
-      await writeFile(path.join(histDir, `${name}.${historyTimestamp()}.json`), body);
+      await writeFile(TEMPLATE_FILE, body);
+      // D10 history 快照:全量副本、不清理不去重(單模板 → 檔名僅時間戳)
+      await mkdir(HIST_DIR, { recursive: true });
+      await writeFile(path.join(HIST_DIR, `${historyTimestamp()}.json`), body);
       send(res, 200, JSON.stringify({ ok: true }));
       return;
     }
   }
 
-  // POST /api/assets/images?name=<filename>
+  // POST /api/assets/images?name=<filename>(D23:存進專案夾 images/)
   if (urlPath === '/api/assets/images' && req.method === 'POST') {
     const name = new URL(req.url ?? '/', 'http://x').searchParams.get('name') ?? '';
     if (!/^[\w一-鿿-]+\.(png|jpe?g|webp)$/i.test(name)) {
       send(res, 400, JSON.stringify({ error: '檔名不合法(支援 png/jpg/webp)' }));
       return;
     }
-    const dir = path.join(PROJECT_DIR, 'assets', 'images');
+    const dir = path.join(PROJECT_DIR, 'images');
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, name), await readBody(req));
-    send(res, 200, JSON.stringify({ path: `assets/images/${name}` }));
+    send(res, 200, JSON.stringify({ path: `images/${name}` }));
     return;
   }
 

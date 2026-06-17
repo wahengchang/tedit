@@ -37,24 +37,26 @@ function waitServer(port, tries = 50) {
   });
 }
 
-const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2e-'));
-cpSync(path.join(ROOT, 'examples', 'demo'), work, { recursive: true });
-// 設計時值出圖:用空資料(編輯器顯示的也是設計時值,兩邊才對齊)
-writeFileSync(path.join(work, 'data', 'empty.yaml'), '');
-
-const server = spawn(process.execPath, [SERVER, '--port', String(PORT), '--dir', work], { stdio: 'ignore' });
+// D23:一資料夾一專案一模板 → 每個範本一個專案夾,各起一個 server 比對
 let browser;
+const cleanups = [];
 try {
-  await waitServer(PORT);
   browser = await chromium.launch();
 
-  for (const tpl of ['card', 'multibind']) {
+  for (const [i, tpl] of ['card', 'multibind'].entries()) {
+    const port = PORT + i;
+    const proj = mkdtempSync(path.join(tmpdir(), `tedit-e2e-${tpl}-`));
+    cpSync(path.join(ROOT, 'examples', 'demo', tpl), proj, { recursive: true });
+    const server = spawn(process.execPath, [SERVER, '--port', String(port), '--dir', proj], { stdio: 'ignore' });
+    cleanups.push(() => { server.kill(); rmSync(proj, { recursive: true, force: true }); });
+    await waitServer(port);
+
     // 視窗要夠寬,讓中間欄(總寬 - 左 200 - 右 240)容得下最寬畫布(card 1200),
     // 否則 #stage 溢出被裁,截圖右側不完整(測試假象,非真 bug)
     const page = await browser.newPage({ viewport: { width: 1800, height: 900 }, deviceScaleFactor: 1 });
     const errs = [];
     page.on('pageerror', (e) => errs.push(e.message));
-    await page.goto(`http://127.0.0.1:${PORT}/?template=${tpl}`);
+    await page.goto(`http://127.0.0.1:${port}/`);
     await page.waitForFunction(() => document.querySelectorAll('#layers-list .layer-row').length > 0, { timeout: 10000 });
     // 隱藏綁定角標(僅 UI 覆蓋層,不該進比對);不選取任何元素(無控制柄)
     await page.evaluate(() => { const b = document.getElementById('badge-layer'); if (b) b.style.display = 'none'; });
@@ -62,14 +64,9 @@ try {
     const editorBuf = await page.locator('#stage').screenshot();
     await page.close();
 
-    // 真正的 CLI 出圖(空資料 → 設計時值)
-    const cliOut = path.join(work, `cli-${tpl}.png`);
-    await run(process.execPath, [
-      CLI, 'render',
-      path.join(work, 'templates', `${tpl}.template.json`),
-      path.join(work, 'data', 'empty.yaml'),
-      '-o', cliOut,
-    ]);
+    // 真正的 CLI 出圖(無資料 → 設計時值,與編輯器所見對齊)
+    const cliOut = path.join(proj, `cli-${tpl}.png`);
+    await run(process.execPath, [CLI, 'render', proj, '-o', cliOut]);
 
     const a = PNG.sync.read(editorBuf);
     const b = PNG.sync.read(readFileSync(cliOut));
@@ -88,8 +85,7 @@ try {
   console.error(`FAIL  e2e: ${e.message}`);
 } finally {
   if (browser) await browser.close();
-  server.kill();
-  rmSync(work, { recursive: true, force: true });
+  for (const c of cleanups) c();
 }
 
 console.error(failures === 0 ? '\n端到端 parity 全部通過' : `\n端到端 parity ${failures} 項失敗`);

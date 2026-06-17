@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一鍵示範:同一個 card 模板,換三份資料產出三張圖(版面不變、內容不同)。
+# 一鍵示範(D23:一資料夾一專案一模板):同一個 card 專案,換兩份資料產出兩張圖。
 # 用法:從 repo 根目錄執行  bash examples/demo/render-all.sh
 set -euo pipefail
 
@@ -14,10 +14,15 @@ if [ ! -f "$CLI" ]; then
   exit 1
 fi
 
+# card 專案 × 兩份資料(render <專案夾> <資料檔>)
 for data in a b; do
   png="$OUT/card-$data.png"
-  node "$CLI" render "$DEMO/templates/card.template.json" "$DEMO/data/$data.yaml" -o "$png"
+  node "$CLI" render "$DEMO/card" "$DEMO/card/$data.yaml" -o "$png"
   echo "→ $png"
 done
 
-echo "完成:同一模板 × 兩份資料 → 兩張圖(版面相同、標題不同),見 $OUT/"
+# html 圖層範例(無資料,純設計)
+node "$CLI" render "$DEMO/html-card" -o "$OUT/html-card.png"
+echo "→ $OUT/html-card.png"
+
+echo "完成,見 $OUT/"

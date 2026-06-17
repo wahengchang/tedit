@@ -12,7 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "ui": "npm run build && node scripts/ui.mjs",
-    "ui:demo": "npm run build && node scripts/ui.mjs examples/demo",
+    "ui:demo": "npm run build && node scripts/ui.mjs examples/demo/card",
     "kill": "pkill -f dist/web/server.js || true",
     "tedit": "npm run build && node dist/cli/index.js",
     "render:demo": "npm run build && bash examples/demo/render-all.sh",
