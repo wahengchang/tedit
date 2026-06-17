@@ -548,7 +548,7 @@ function renderProps() {
     } else {
       html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
-    html += `<div class="prop"><span></span><button type="button" data-html-open="1" style="cursor:pointer">↗ Open in new tab</button></div>`;
+    html += `<div class="prop"><span></span><button type="button" class="prop-edit-btn" data-html-edit="1">✎ Edit HTML…</button></div>`;
     html += `<div class="prop"><span></span><small style="color:var(--muted)">Live preview on canvas · pure HTML/CSS/JS, transparent body, self-contained assets</small></div>`;
   }
 
@@ -639,26 +639,78 @@ function wireProps() {
   const panel = $('#props-body');
   const onEdit = (e: Event) => void applyPropEdit(e);
   panel.addEventListener('change', onEdit);
-  // html 圖層「↗ Open in new tab」:在新分頁看真實 iframe 內容(live HTML/CSS/JS,可開 devtools)
+  // html 圖層「✎ Edit HTML…」→ 開左右 Modal(左固定尺寸即時預覽 + 右可編輯代碼)
   panel.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement)?.dataset?.htmlOpen) openHtmlLayerInTab();
+    if ((e.target as HTMLElement)?.dataset?.htmlEdit) void openHtmlEditModal();
   });
 }
 
-// 在新分頁打開選取 html 圖層的真實內容。本地檔 → 直接開 server 路徑(資產自然解析);
-// 內嵌代碼 → 開空白同源分頁 document.write(同源故 /assets/… 仍解析、JS 照跑)。
-function openHtmlLayerInTab() {
+// ---------- HTML 圖層編輯 Modal ----------
+// 統一規則:inline 與 src 兩種都能在同一個 Modal 編輯,永不卡唯讀。
+// inline → 載入 el.html;src → fetch 檔案內容載入。一旦 Done 一律存成 inline(src 層編過即脫鉤原檔)。
+let htmlEditId: string | null = null;
+let htmlEditTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function openHtmlEditModal() {
   const el = selectedElement();
   if (!el || el.type !== 'html') return;
+  htmlEditId = el.id;
+  const W = Math.max(1, Math.round(el.width));
+  const H = Math.max(1, Math.round(el.height));
+  ($('#he-dim') as HTMLElement).textContent = `${W} × ${H}`;
+  const code = $('#he-code') as HTMLTextAreaElement;
+  // 載入內容:inline 直接用字串;src 去 fetch 那個檔(載進來編輯 → Done 轉 inline)
+  let content = el.html ?? '';
   if (typeof el.src === 'string') {
-    window.open('/' + el.src.replace(/^\//, ''), '_blank');
-  } else if (typeof el.html === 'string') {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.open();
-    w.document.write(el.html);
-    w.document.close();
+    try {
+      content = await (await fetch('/' + el.src.replace(/^\//, ''))).text();
+    } catch {
+      content = `<!-- 載入 ${el.src} 失敗,可直接在此重寫 -->`;
+    }
   }
+  code.value = content;
+  const frame = $('#he-frame') as HTMLIFrameElement;
+  const renderPrev = () => {
+    frame.srcdoc = code.value;
+  };
+  code.oninput = () => {
+    clearTimeout(htmlEditTimer);
+    htmlEditTimer = setTimeout(renderPrev, 180);
+  };
+  openModal('html-modal');
+  sizeHtmlEditFrame(W, H); // modal 已開 → prevwrap 有尺寸可量
+  renderPrev();
+  code.focus();
+}
+
+// 把 W×H 的 iframe 等比縮到預覽 pane 內(transform scale;忠實呈現固定尺寸)
+function sizeHtmlEditFrame(W: number, H: number) {
+  const wrap = $('#html-modal .he-prevwrap') as HTMLElement;
+  const scaler = $('#he-scaler') as HTMLElement;
+  const frame = $('#he-frame') as HTMLElement;
+  const pad = 32;
+  const s = Math.min(1, (wrap.clientWidth - pad) / W, (wrap.clientHeight - pad) / H) || 1;
+  frame.style.width = `${W}px`;
+  frame.style.height = `${H}px`;
+  frame.style.transform = `scale(${s})`;
+  frame.style.transformOrigin = 'top left';
+  scaler.style.width = `${W * s}px`;
+  scaler.style.height = `${H * s}px`;
+}
+
+// Done:把編輯內容存回該層(一律 inline);src 層編過即轉 inline(脫鉤原共用檔)
+async function commitHtmlEdit() {
+  if (!htmlEditId) return;
+  const id = htmlEditId;
+  const s = scene();
+  const el = s.elements.find((e) => e.id === id);
+  if (el && el.type === 'html') {
+    el.html = ($('#he-code') as HTMLTextAreaElement).value;
+    delete (el as { src?: string }).src; // 統一存 inline
+    await commit(s, id);
+  }
+  htmlEditId = null;
+  closeModal('html-modal');
 }
 
 async function applyPropEdit(e: Event) {
@@ -1014,6 +1066,7 @@ function wireModals() {
   $('#save-confirm').onclick = () => void saveFromModal();
   $('#strict-toggle').addEventListener('change', renderExportPreview);
   $('#download-btn').onclick = () => void downloadPng();
+  $('#he-done').onclick = () => void commitHtmlEdit();
 }
 
 // 網頁直接出圖下載:POST 目前場景(含填入的變數值)→ server 子行程跑 CLI render → 回 PNG blob
