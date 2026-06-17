@@ -548,6 +548,7 @@ function renderProps() {
     } else {
       html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
+    html += `<div class="prop"><span></span><button type="button" data-html-open="1" style="cursor:pointer">↗ Open in new tab</button></div>`;
     html += `<div class="prop"><span></span><small style="color:var(--muted)">Live preview on canvas · pure HTML/CSS/JS, transparent body, self-contained assets</small></div>`;
   }
 
@@ -638,6 +639,26 @@ function wireProps() {
   const panel = $('#props-body');
   const onEdit = (e: Event) => void applyPropEdit(e);
   panel.addEventListener('change', onEdit);
+  // html 圖層「↗ Open in new tab」:在新分頁看真實 iframe 內容(live HTML/CSS/JS,可開 devtools)
+  panel.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement)?.dataset?.htmlOpen) openHtmlLayerInTab();
+  });
+}
+
+// 在新分頁打開選取 html 圖層的真實內容。本地檔 → 直接開 server 路徑(資產自然解析);
+// 內嵌代碼 → 開空白同源分頁 document.write(同源故 /assets/… 仍解析、JS 照跑)。
+function openHtmlLayerInTab() {
+  const el = selectedElement();
+  if (!el || el.type !== 'html') return;
+  if (typeof el.src === 'string') {
+    window.open('/' + el.src.replace(/^\//, ''), '_blank');
+  } else if (typeof el.html === 'string') {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.open();
+    w.document.write(el.html);
+    w.document.close();
+  }
 }
 
 async function applyPropEdit(e: Event) {
