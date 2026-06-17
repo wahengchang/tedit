@@ -3,8 +3,8 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U7 編輯器強化 + B1 undo/redo + U7 滾輪縮放,**已上 GitHub + Actions CI**,六關全綠);B2 對齊吸附在 `feat/align-guides`(PR 待開)
-> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放;B1 undo/redo(PR #2)、U7(PR #3)已合併;B2 對齊吸附 PR 待開。
+> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U8 編輯器強化 + B1 undo/redo + B2 對齊吸附,**已上 GitHub + Actions CI**,六關全綠);U8 載入符合視窗在 `feat/fit-on-load`(PR #5 待開)
+> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放 / U8 載入符合視窗;B1 undo/redo(PR #2)、U7(PR #3)、B2 對齊吸附(PR #4)已合併;U8 PR #5 待開。
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
@@ -80,6 +80,7 @@ tedit/
 
 | U6 | 畫布(文件)尺寸可改,兩個入口:① 工具列「Document」鈕(文件 icon)開 modal;② 沒選元素時右側 Properties 顯示 Canvas 面板。皆含 Width/Height/Background + 常用尺寸 preset(IG 方形/直式/Story、OG、HD);改尺寸同步更新 designW/H(zoom 正規化靠它),元素座標保留 | ✅ | `src/web/ui/` | 之前畫布大小只能靠 project.json/建檔決定,編輯器無法改;六關全綠、實機驗證 Document modal 與側欄改 Width 皆即時縮放、雙向同步 |
 | U7 | 滾輪 / 觸控板「以游標為錨」縮放(`wheel` + `zoomAt`,指數步進手感平滑;`passive:false` 擋頁面捲動,縮放後補捲動把游標下的點釘回原位) | ✅ | `src/web/ui/` | 六關全綠、實機驗證滾上 100→212% / 滾下 →64% 雙向以游標為錨 |
+| U8 | 載入即「符合視窗」:大畫布(如 1200/1920px)在 100% 會爆出工作區 → boot 改呼叫 `fitZoom()`(上限 100%,小畫布維持 1:1)。e2e 加「載入自動縮到 <100%」鑑別測試;parity 測試用寬視窗 fit=1 故同像素不破,但座標型 e2e 先點百分比回 100% 再跑 | ✅ | `src/web/ui/` | 之前載入恆 100%,大畫布溢出要手動縮;PR #5 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 

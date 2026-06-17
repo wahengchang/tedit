@@ -145,7 +145,9 @@ async function init() {
   badgeLayer.id = 'badge-layer';
   $('#stage').appendChild(badgeLayer);
 
-  applyZoom(); // 套初始 zoom(100%):loadScene 已把 canvas 設成 design,這裡接 zoom 與 #stage 尺寸
+  // 載入即「符合視窗」:大畫布(如 1920px)在 100% 會爆出工作區,fitZoom 縮到剛好放得下;
+  // fitZoom 上限 100%,小畫布維持 1:1 不被放大。(loadScene 已把 canvas 設成 design)
+  fitZoom();
 
   $('#tpl-name').textContent = templateName;
   $('#status-path').textContent = `templates/${templateName}.template.json`;

@@ -48,6 +48,13 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/?template=card`);
   await page.waitForFunction(() => document.querySelectorAll('#layers-list .layer-row').length > 0, { timeout: 10000 });
 
+  // 載入即「符合視窗」:1200px 畫布在 960px 工作區應被縮小(<100%)。先驗自動縮放,
+  // 再點百分比回 100%(本測試後續座標數學假設 1:1)。
+  const loadedZoom = await page.locator('#zoom-pct').innerText();
+  check('載入自動符合視窗(大畫布縮到 <100%)', parseInt(loadedZoom, 10) < 100, `zoom=${loadedZoom}`);
+  await page.locator('#zoom-pct').click();
+  await page.waitForFunction(() => document.querySelector('#zoom-pct').textContent === '100%', { timeout: 3000 });
+
   // 1. 圖層列表:card 模板有 3 元素
   const layerCount = await page.locator('#layers-list .layer-row').count();
   check('圖層列表載入 3 元素', layerCount === 3, `count=${layerCount}`);
