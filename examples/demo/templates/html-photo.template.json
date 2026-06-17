@@ -1,0 +1,21 @@
+{
+  "teditVersion": "0.1",
+  "canvas": {
+    "width": 1000,
+    "height": 600,
+    "background": "#000000"
+  },
+  "elements": [
+    {
+      "id": "hero",
+      "type": "html",
+      "x": 0,
+      "y": 0,
+      "width": 1000,
+      "height": 600,
+      "rotation": 0,
+      "src": "assets/html/photo-overlay.html"
+    }
+  ],
+  "bindings": []
+}

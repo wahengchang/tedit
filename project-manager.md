@@ -3,8 +3,9 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U8 編輯器強化 + B1 undo/redo + B2 對齊吸附,**已上 GitHub + Actions CI**,六關全綠);U8 載入符合視窗在 `feat/fit-on-load`(PR #5 待開)
-> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放 / U8 載入符合視窗;B1 undo/redo(PR #2)、U7(PR #3)、B2 對齊吸附(PR #4)已合併;U8 PR #5 待開。
+> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U8 編輯器強化 + B1 undo/redo + B2 對齊吸附 + U8 載入符合視窗,**已上 GitHub + Actions CI**,六關全綠);HTML 圖層範例集在 `feat/html-examples`(PR #6 待開)
+> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放 / U8 載入符合視窗;B1(PR #2)、U7(PR #3)、B2(PR #4)、U8(PR #5)已合併;HTML 範例集 PR #6 待開。
+> 文件:HTML 圖層 5 範例(badge/stats/pricing/quote/photo,內嵌 srcdoc × 本地檔 src 各半)+ examples/demo/README「HTML 圖層怎麼用」章節 + render-all.sh 一鍵出全部;沙箱禁 script、資產走 `/assets/...`、可疊原生層。
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
