@@ -144,6 +144,9 @@ async function init() {
   const badgeLayer = document.createElement('div');
   badgeLayer.id = 'badge-layer';
   $('#stage').appendChild(badgeLayer);
+  const renderOverlay = document.createElement('div');
+  renderOverlay.id = 'render-overlay';
+  $('#stage').appendChild(renderOverlay);
 
   // 載入即「符合視窗」:大畫布(如 1920px)在 100% 會爆出工作區,fitZoom 縮到剛好放得下;
   // fitZoom 上限 100%,小畫布維持 1:1 不被放大。(loadScene 已把 canvas 設成 design)
@@ -214,6 +217,7 @@ async function refreshHtmlPreviews() {
       elements: [{ ...el, x: 0, y: 0, rotation: 0, width: w, height: h }],
       bindings: [],
     };
+    showRenderSpinner(el.id); // 轉圈提示:讓使用者知道在算、不是壞了
     try {
       const res = await fetch('/api/render', {
         method: 'POST',
@@ -231,6 +235,8 @@ async function refreshHtmlPreviews() {
       previewUrls.set(el.id, url);
     } catch {
       previewHash.delete(el.id); // 預覽失敗不致命
+    } finally {
+      hideRenderSpinner(el.id);
     }
   }
   // 清掉已刪除圖層的快取
@@ -241,6 +247,34 @@ async function refreshHtmlPreviews() {
     previewUrls.delete(id);
     previewHash.delete(id);
   }
+}
+
+// 出圖轉圈提示:放在該 html 圖層中心(fabric 物件 left/top 為中心 × zoom)
+function htmlObjCenter(id: string): { x: number; y: number } | null {
+  for (const o of (handle.canvas as unknown as FCanvas).getObjects()) {
+    const oo = o as unknown as { teditId?: string; left: number; top: number };
+    if (oo.teditId === id) return { x: oo.left * zoom, y: oo.top * zoom };
+  }
+  return null;
+}
+function showRenderSpinner(id: string) {
+  const overlay = document.getElementById('render-overlay');
+  if (!overlay) return;
+  let sp = overlay.querySelector<HTMLElement>(`[data-spin="${id}"]`);
+  if (!sp) {
+    sp = document.createElement('div');
+    sp.className = 'render-spin';
+    sp.dataset.spin = id;
+    overlay.appendChild(sp);
+  }
+  const c = htmlObjCenter(id);
+  if (c) {
+    sp.style.left = `${c.x}px`;
+    sp.style.top = `${c.y}px`;
+  }
+}
+function hideRenderSpinner(id: string) {
+  document.getElementById('render-overlay')?.querySelector(`[data-spin="${id}"]`)?.remove();
 }
 
 // ---------- zoom(純視圖;座標不變)----------
@@ -548,7 +582,10 @@ function renderProps() {
     } else {
       html += `<label class="prop col"><span>HTML code (paste full snippet)</span><textarea data-k="html" rows="6">${escapeHtml(el.html ?? '')}</textarea></label>`;
     }
-    html += `<div class="prop"><span></span><button type="button" class="prop-edit-btn" data-html-edit="1">✎ Edit HTML…</button></div>`;
+    html += `<div class="prop"><span></span><span style="display:flex;gap:6px;width:100%">` +
+      `<button type="button" class="prop-edit-btn" data-html-edit="1" style="flex:1">✎ Edit HTML…</button>` +
+      `<button type="button" class="prop-edit-btn" data-html-refresh="1" title="Refresh preview" style="flex:none;width:40px">⟳</button>` +
+      `</span></div>`;
     html += `<div class="prop"><span></span><small style="color:var(--muted)">Live preview on canvas · pure HTML/CSS/JS, transparent body, self-contained assets</small></div>`;
   }
 
@@ -639,10 +676,20 @@ function wireProps() {
   const panel = $('#props-body');
   const onEdit = (e: Event) => void applyPropEdit(e);
   panel.addEventListener('change', onEdit);
-  // html 圖層「✎ Edit HTML…」→ 開左右 Modal(左固定尺寸即時預覽 + 右可編輯代碼)
+  // html 圖層「✎ Edit HTML…」→ 開 Modal;「⟳」→ 強制重畫該層預覽
   panel.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement)?.dataset?.htmlEdit) void openHtmlEditModal();
+    const ds = (e.target as HTMLElement)?.dataset;
+    if (ds?.htmlEdit) void openHtmlEditModal();
+    else if (ds?.htmlRefresh) forceRefreshSelectedHtml();
   });
+}
+
+// ⟳:清掉該層預覽快取 → 立刻重畫(src 檔在外部改過、或想手動刷新時用)
+function forceRefreshSelectedHtml() {
+  const id = handle.selectedId();
+  if (!id) return;
+  previewHash.delete(id);
+  void refreshHtmlPreviews();
 }
 
 // ---------- HTML 圖層編輯 Modal ----------
@@ -670,17 +717,44 @@ async function openHtmlEditModal() {
   }
   code.value = content;
   const frame = $('#he-frame') as HTMLIFrameElement;
+  const hl = $('#he-hl') as HTMLElement;
+  const syncHighlight = () => {
+    hl.innerHTML = highlightHtml(code.value);
+    hl.scrollTop = code.scrollTop;
+    hl.scrollLeft = code.scrollLeft;
+  };
   const renderPrev = () => {
     frame.srcdoc = code.value;
   };
   code.oninput = () => {
+    syncHighlight(); // 高亮即時跟
     clearTimeout(htmlEditTimer);
-    htmlEditTimer = setTimeout(renderPrev, 180);
+    htmlEditTimer = setTimeout(renderPrev, 180); // 預覽 debounce
+  };
+  code.onscroll = () => {
+    hl.scrollTop = code.scrollTop;
+    hl.scrollLeft = code.scrollLeft;
   };
   openModal('html-modal');
   sizeHtmlEditFrame(W, H); // modal 已開 → prevwrap 有尺寸可量
+  syncHighlight();
   renderPrev();
   code.focus();
+}
+
+// 零依賴 HTML 語法高亮(供編輯器疊層用)。先 escape,再上色:註解 / 標籤名 / 屬性名 / 字串值。
+// 不解析 <style>/<script> 內部(留原樣文字),正則誤判也只是少上色、不會壞顯示。
+function highlightHtml(src: string): string {
+  let s = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s = s.replace(/&lt;!--[\s\S]*?--&gt;/g, (m) => `<span class="hl-com">${m}</span>`);
+  s = s.replace(/(&lt;\/?)([a-zA-Z][\w-]*)([\s\S]*?)(\/?&gt;)/g, (_m, open, tag, attrs, close) => {
+    const a = attrs.replace(
+      /([\w-]+)(=)(&quot;[^&]*&quot;|"[^"]*"|'[^']*')/g,
+      (_mm: string, n: string, eq: string, v: string) => `<span class="hl-attr">${n}</span>${eq}<span class="hl-str">${v}</span>`,
+    );
+    return `${open}<span class="hl-tag">${tag}</span>${a}${close}`;
+  });
+  return s;
 }
 
 // 把 W×H 的 iframe 等比縮到預覽 pane 內(transform scale;忠實呈現固定尺寸)

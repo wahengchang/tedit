@@ -185,8 +185,22 @@
       background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #202020; }
     #he-scaler { overflow: hidden; flex: none; }
     #he-frame { border: 0; background: transparent; display: block; }
-    #he-code { flex: 1; border: 0; resize: none; background: #1b1b1b; color: #cfe3ff; font: 13px/1.5 ui-monospace, Menlo, monospace; padding: 14px; outline: none; }
+    /* 代碼編輯器:透明 textarea 疊在語法高亮 <pre> 上(零依賴 highlight) */
+    .he-codewrap { flex: 1; min-height: 0; position: relative; }
+    #he-hl, #he-code {
+      position: absolute; inset: 0; margin: 0; border: 0; padding: 14px;
+      font: 13px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+      overflow: auto; tab-size: 2;
+    }
+    #he-hl { background: #1b1b1b; color: #cfe3ff; pointer-events: none; }
+    #he-code { background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
+    .hl-tag { color: #c678dd; } .hl-attr { color: #d19a66; } .hl-str { color: #98c379; } .hl-com { color: #5c6370; font-style: italic; }
     .modal.wide .modal-actions { padding: 10px 16px; border-top: 1px solid var(--border); margin: 0; }
+    /* 出圖預覽中的轉圈提示(蓋在該 html 圖層上,讓使用者知道在算、不是壞了) */
+    #render-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+    .render-spin { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+      border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: tspin .7s linear infinite; }
+    @keyframes tspin { to { transform: rotate(360deg); } }
     .hist-list { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--border); }
     .hist-list li { padding: 7px 2px; border-bottom: 1px solid #303030; color: var(--text); font-variant-numeric: tabular-nums; }
     .hist-list .empty { padding: 10px 2px; }
@@ -358,7 +372,7 @@
         </div>
         <div class="he-pane">
           <div class="he-ph"><span>HTML code</span><span>live</span></div>
-          <textarea id="he-code" spellcheck="false"></textarea>
+          <div class="he-codewrap"><pre id="he-hl" aria-hidden="true"></pre><textarea id="he-code" spellcheck="false"></textarea></div>
         </div>
       </div>
       <div class="modal-actions">
