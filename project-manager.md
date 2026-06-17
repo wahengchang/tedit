@@ -3,8 +3,8 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U7 編輯器強化 + B1 undo/redo,**已上 GitHub + Actions CI**,六關全綠)
-> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放;B1 undo/redo 已合併(PR #2)。
+> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U7 編輯器強化 + B1 undo/redo + U7 滾輪縮放,**已上 GitHub + Actions CI**,六關全綠);B2 對齊吸附在 `feat/align-guides`(PR 待開)
+> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放;B1 undo/redo(PR #2)、U7(PR #3)已合併;B2 對齊吸附 PR 待開。
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
@@ -86,7 +86,7 @@ tedit/
 | # | 功能 | 狀態 | 觸碰熱區 | 可平行? | 備註 |
 |---|------|------|----------|---------|------|
 | B1 | undo / redo | ✅ | editor.ts | — | 場景快照堆疊(JSON 去重);⌘Z/⌘⇧Z/⌘Y + 工具列鈕(含 disabled 狀態);記錄點=commit()+畫布 object:modified/text:editing:exited;undo 連 canvas 尺寸一起還原;六關全綠、實機驗證 add→undo→redo |
-| B2 | 對齊輔助線 + 吸附 | ⬜ | editor.ts | 與 B1 互斥 | 純編輯器;U1 已合併,可開 |
+| B2 | 對齊輔助線 + 吸附 | ✅ | editor.ts | — | object:moving 時把被移動物件 左/中/右·上/中/下 比對「畫布 0/中/邊」+ 其他物件同類線,≤6px(÷zoom)吸附並畫洋紅參考線(after:render 主 context,不進場景);全在 design 單位算,viewportTransform 轉螢幕 → zoom 自動跟;e2e 加「拖近中線→吸附正中」鑑別測試,六關全綠 |
 | B3 | 批次資料表量產(CSV) | ⬜ | 🟢 cli | 可平行 | 提案見 docs/interface-examples/A-proposal-batch.csv |
 | B4 | URL 圖片變數 | ⬜ | 🟢 resolver+cli | 可平行 | 下載/快取/逾時要研究 |
 | B5 | `--keep-alive` 常駐加速 | ⬜ | 🟢 headless+cli | 可平行 | 重複出圖提速 |
@@ -97,7 +97,7 @@ tedit/
 
 > **平行化提醒**:🔴 三角(schema/映射層)與 editor.ts 是兩個序列化熱區,一次進一個;
 > 🟢 乾淨車道(cli/resolver/server/headless)可同時開 worktree。
-> **現況**:U1 已合併,editor.ts 釋出 → B1/B2 可開(但仍互斥,一次一個);🔴 schema 三角(B7/B8)動它要先定資料結構。
+> **現況**:B1/B2 已完成(B2 待合併),editor.ts 熱區再次釋出 → 下個 editor 類(無)或挑🟢乾淨車道(B3/B4/B5/B6 可平行);🔴 schema 三角(B7/B8)動它要先定資料結構。
 
 ---
 

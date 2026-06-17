@@ -161,6 +161,7 @@ async function init() {
   wireProps();
   wireKeyboard();
   wireZoom();
+  wireAlignGuides();
   wireModals();
   // 首頁鈕(U2):有未存變更先確認
   $('#home-btn').onclick = () => {
@@ -237,6 +238,111 @@ function wireZoom() {
     },
     { passive: false },
   );
+}
+
+// ---------- B2:對齊輔助線 + 吸附(純編輯器;不進場景)----------
+// 拖移時把被移動物件的 左/中/右、上/中/下 與「畫布 0/中/邊」及「其他物件的同類線」
+// 比對,落在閾值內就吸附並畫出洋紅參考線。座標全在 design 單位算,畫線時用 fabric 的
+// viewportTransform 轉成螢幕 px → zoom 自動跟著對。輔助線畫在主 context(每幀重繪不殘留)。
+type FObj = { left: number; top: number; width: number; height: number; scaleX: number; scaleY: number; setCoords(): void };
+type FCanvas = {
+  on(e: string, cb: (opt: { target?: FObj }) => void): void;
+  getObjects(): FObj[];
+  getContext(): CanvasRenderingContext2D;
+  viewportTransform: [number, number, number, number, number, number];
+  requestRenderAll(): void;
+};
+type Cand = { pos: number; a: number; b: number }; // pos=對齊座標;a..b=另一軸延伸範圍(畫線長度)
+type Guide = { vertical: boolean; pos: number; a: number; b: number };
+
+function boxOf(o: FObj) {
+  const w = o.width * o.scaleX;
+  const h = o.height * o.scaleY;
+  return { l: o.left - w / 2, cx: o.left, r: o.left + w / 2, t: o.top - h / 2, cy: o.top, b: o.top + h / 2 };
+}
+
+/** 在候選線中找與物件三條參考線最近者(<tol);回傳要補的位移 + 命中的候選。 */
+function nearestSnap(refs: number[], cands: Cand[], tol: number): { delta: number; cand: Cand } | null {
+  let best: { delta: number; cand: Cand } | null = null;
+  for (const ref of refs) {
+    for (const cand of cands) {
+      const d = cand.pos - ref;
+      if (Math.abs(d) <= tol && (!best || Math.abs(d) < Math.abs(best.delta))) best = { delta: d, cand };
+    }
+  }
+  return best;
+}
+
+function wireAlignGuides() {
+  const c = handle.canvas as unknown as FCanvas;
+  const SNAP_PX = 6; // 螢幕閾值;÷zoom 換回 design 單位 → 放大時更好對
+  let guides: Guide[] = [];
+
+  c.on('object:moving', (opt) => {
+    const t = opt.target;
+    if (!t) return;
+    const tol = SNAP_PX / zoom;
+    guides = [];
+
+    // 候選線:畫布 0/中/邊 + 其他每個物件的 左中右 / 上中下
+    const vert: Cand[] = [0, designW / 2, designW].map((pos) => ({ pos, a: 0, b: designH }));
+    const horz: Cand[] = [0, designH / 2, designH].map((pos) => ({ pos, a: 0, b: designW }));
+    for (const o of c.getObjects()) {
+      if (o === t) continue;
+      const b = boxOf(o);
+      vert.push({ pos: b.l, a: b.t, b: b.b }, { pos: b.cx, a: b.t, b: b.b }, { pos: b.r, a: b.t, b: b.b });
+      horz.push({ pos: b.t, a: b.l, b: b.r }, { pos: b.cy, a: b.l, b: b.r }, { pos: b.b, a: b.l, b: b.r });
+    }
+
+    const bx = boxOf(t);
+    const sx = nearestSnap([bx.l, bx.cx, bx.r], vert, tol);
+    if (sx) {
+      t.left += sx.delta;
+      const nb = boxOf(t);
+      guides.push({ vertical: true, pos: sx.cand.pos, a: Math.min(nb.t, sx.cand.a), b: Math.max(nb.b, sx.cand.b) });
+    }
+    const by = boxOf(t);
+    const sy = nearestSnap([by.t, by.cy, by.b], horz, tol);
+    if (sy) {
+      t.top += sy.delta;
+      const nb = boxOf(t);
+      guides.push({ vertical: false, pos: sy.cand.pos, a: Math.min(nb.l, sy.cand.a), b: Math.max(nb.r, sy.cand.b) });
+    }
+    t.setCoords();
+  });
+
+  const clear = () => {
+    if (guides.length) {
+      guides = [];
+      c.requestRenderAll();
+    }
+  };
+  c.on('object:modified', clear);
+  c.on('mouse:up', clear);
+  c.on('selection:cleared', clear);
+
+  c.on('after:render', () => {
+    if (!guides.length) return;
+    const vt = c.viewportTransform;
+    const ctx = c.getContext();
+    ctx.save();
+    ctx.strokeStyle = '#e5358a'; // 洋紅,與選取藍框區隔
+    ctx.lineWidth = 1;
+    for (const g of guides) {
+      ctx.beginPath();
+      if (g.vertical) {
+        const x = Math.round(g.pos * vt[0] + vt[4]) + 0.5; // +0.5 避免 1px 線糊掉
+        ctx.moveTo(x, g.a * vt[3] + vt[5]);
+        ctx.lineTo(x, g.b * vt[3] + vt[5]);
+      } else {
+        const y = Math.round(g.pos * vt[3] + vt[5]) + 0.5;
+        ctx.moveTo(g.a * vt[0] + vt[4], y);
+        ctx.lineTo(g.b * vt[0] + vt[4], y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
 }
 
 // ---------- 狀態列 ----------
