@@ -3,7 +3,8 @@
 > **單一進度真相**:模組現況 + 已完成里程碑 + 下一步看板 + 技術債。
 > (研究/決議記錄不在此重複 → 見 `docs/decisions/`、總帳 `docs/README-HANDOVER.md §4`;
 >  全貌圖見 `docs/OVERVIEW-VISUAL.md`。)
-> 更新:2026-06-16 · 在 `main`(v1 + HTML 圖層 + U1 重製 + U2 首頁 + U3 copy-paste/英文/icon + U4 快捷鍵 + U5 網頁下載 PNG + U6 畫布尺寸可改,六關全綠)
+> 更新:2026-06-17 · 在 `main`(v1 + HTML 圖層 + U1–U7 編輯器強化 + B1 undo/redo,**已上 GitHub + Actions CI**,六關全綠)
+> UI 進度濃縮:U1 重製 / U2 模板首頁 / U3 copy-paste+英文+icon / U4 快捷鍵 / U5 網頁下載 PNG / U6 畫布尺寸 / U7 滾輪縮放;B1 undo/redo 已合併(PR #2)。
 
 狀態圖例:✅ 完成　🔨 進行中　⬜ 未開始　🔜 建議下一個　⏳ 等人工/外部　🟢 乾淨車道(可平行)　🔴 動序列化熱區(要小心)
 
@@ -78,6 +79,7 @@ tedit/
 | U5 | 網頁直接下載 PNG:Export modal 加「Download PNG」+ 倍率(1×/2×/3×);POST `/api/render` 帶目前場景+變數值+strict → **server 子行程跑 CLI render**(D01:不 import cli,出圖管線與 CLI 一致)→ 回 PNG blob 下載;exit 4(--strict 缺值)→ 422 | ✅ | 🟢 `src/web/server.ts` + `src/web/ui/` + `src/cli/render.ts` | **修**:無 `project.json` 的專案 locateProject 會 fallback 到 `.tedit/` 致圖片 404→EncodingError → 給 render 加 `--dir` 明確指定專案根,server 直接傳;curl 驗 repo 根+project1(圖片/形狀/HTML)2400×1260 OK;六關全綠 |
 
 | U6 | 畫布(文件)尺寸可改,兩個入口:① 工具列「Document」鈕(文件 icon)開 modal;② 沒選元素時右側 Properties 顯示 Canvas 面板。皆含 Width/Height/Background + 常用尺寸 preset(IG 方形/直式/Story、OG、HD);改尺寸同步更新 designW/H(zoom 正規化靠它),元素座標保留 | ✅ | `src/web/ui/` | 之前畫布大小只能靠 project.json/建檔決定,編輯器無法改;六關全綠、實機驗證 Document modal 與側欄改 Width 皆即時縮放、雙向同步 |
+| U7 | 滾輪 / 觸控板「以游標為錨」縮放(`wheel` + `zoomAt`,指數步進手感平滑;`passive:false` 擋頁面捲動,縮放後補捲動把游標下的點釘回原位) | ✅ | `src/web/ui/` | 六關全綠、實機驗證滾上 100→212% / 滾下 →64% 雙向以游標為錨 |
 
 ### B. M6 擴充背包(擇序;標熱區與可否平行)
 
@@ -103,7 +105,7 @@ tedit/
 
 - fabric lineHeight 內部常數 1.13(映射層吸收;**升版要重驗**,往返測試會抓)
 - 英文單字攔腰折斷(fabric splitByGrapheme;待 B9 自寫混排斷行)
-- 無遠端 repo → CI 硬指標暫以本地 `npm test` 代行,建遠端後補 pipeline
+- (已解)~~無遠端 repo~~ 已上 GitHub(wahengchang/tedit)+ GitHub Actions CI(lint + 全測試鏈);PR 流程啟用(feat/* 分支 → PR → main)
 - (已解)~~編輯態毛刺~~ 撤銷(D18 視覺誤判);~~contain/line save bug~~ M1 修
 
 ---
