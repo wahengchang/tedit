@@ -1,7 +1,9 @@
 // 編輯器啟動器:起 server + 開瀏覽器,Ctrl+C 結束。
+// D23:一資料夾一專案一模板 → 指向資料夾即開其 template.json。
 // 用法(經 npm):
-//   npm run ui                      # 用目前資料夾當專案
+//   npm run ui                      # 用目前資料夾當專案(開 ./template.json)
 //   npm run ui -- examples/demo     # 指定專案資料夾
+//   npm run ui -- ./path/template.json   # 指到模板檔也行(用其所在夾)
 //   npm run ui -- ./path --port 5174 --no-open
 //   npm run ui:demo                 # 捷徑 = examples/demo
 import { spawn } from 'node:child_process';
@@ -23,14 +25,18 @@ for (let i = 0; i < args.length; i++) {
   else if (!a.startsWith('-')) dir = a;
 }
 
-const projectDir = path.resolve(dir);
+let projectDir = path.resolve(dir);
 if (!existsSync(SERVER)) {
   console.error('缺 dist/ — 請先執行 npm run build');
   process.exit(1);
 }
-if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
-  console.error(`專案資料夾不存在:${projectDir}`);
+if (!existsSync(projectDir)) {
+  console.error(`專案路徑不存在:${projectDir}`);
   process.exit(1);
+}
+// D23:指到 template.json 檔 → 用其所在資料夾當專案夾
+if (statSync(projectDir).isFile()) {
+  projectDir = path.dirname(projectDir);
 }
 
 const child = spawn(process.execPath, [SERVER, '--port', port, '--dir', projectDir], { stdio: 'inherit' });

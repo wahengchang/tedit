@@ -2,11 +2,13 @@
 // 欄位:變數名/型別/綁定位置(元素 id+屬性)/設計時預設值;同名綁多處列多行(JSON 為陣列)。
 // 掃描邏輯在 core/resolver(vars 與 resolver 共用);本檔只負責呈現(D01:cli 不放核心邏輯)。
 
-import { loadTemplate } from './shared.js';
+import { loadTemplate, resolveTemplateInput } from './shared.js';
 import { scanVars } from '../core/resolver/index.js';
 
 export function runVars(templatePath: string, json: boolean): void {
-  const scene = loadTemplate(templatePath);
+  // D23:接受資料夾(推 template.json)或顯式檔案
+  const { templateFile } = resolveTemplateInput(templatePath);
+  const scene = loadTemplate(templateFile);
   const entries = scanVars(scene);
 
   if (json) {

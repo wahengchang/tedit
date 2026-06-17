@@ -33,8 +33,9 @@ function waitServer(port, tries = 50) {
   });
 }
 
+// D23:一資料夾一專案一模板 → 直接複製 card 專案夾(template.json 在根)
 const work = mkdtempSync(path.join(tmpdir(), 'tedit-editor-'));
-cpSync(path.join(ROOT, 'examples', 'demo'), work, { recursive: true });
+cpSync(path.join(ROOT, 'examples', 'demo', 'card'), work, { recursive: true });
 
 const server = spawn(process.execPath, [SERVER, '--port', String(PORT), '--dir', work], { stdio: 'ignore' });
 let browser;
@@ -45,7 +46,7 @@ try {
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
 
-  await page.goto(`http://127.0.0.1:${PORT}/?template=card`);
+  await page.goto(`http://127.0.0.1:${PORT}/`);
   await page.waitForFunction(() => document.querySelectorAll('#layers-list .layer-row').length > 0, { timeout: 10000 });
 
   // 載入即「符合視窗」:1200px 畫布在 960px 工作區應被縮小(<100%)。先驗自動縮放,
@@ -81,7 +82,7 @@ try {
   await page.locator('#save-btn').click();
   await page.waitForFunction(() => document.querySelector('#save-btn').textContent.includes('✓'), { timeout: 5000 });
 
-  const savedPath = path.join(work, 'templates', 'card.template.json');
+  const savedPath = path.join(work, 'template.json');
   const layerCount2 = () => page.locator('#layers-list .layer-row').count();
   const saveAndRead = async () => {
     await page.locator('#save-btn').click();
@@ -96,7 +97,7 @@ try {
 
   // 5. history 副本(D10)
   const histDir = path.join(work, '.tedit', 'history');
-  const hist = existsSync(histDir) ? readdirSync(histDir).filter((f) => f.startsWith('card.')) : [];
+  const hist = existsSync(histDir) ? readdirSync(histDir).filter((f) => f.endsWith('.json')) : [];
   check('history 寫了一份時間戳副本', hist.length === 1, JSON.stringify(hist));
 
   // 5a. B2 對齊吸附:把 img1 中心拖到「畫布垂直中線右 2px」→ 應吸附回正中(center==W/2)。
@@ -208,8 +209,7 @@ try {
     try {
       execFileSync(process.execPath, [
         path.join(ROOT, 'dist', 'cli', 'index.js'), 'render',
-        path.join(work, 'templates', 'card.template.json'),
-        path.join(work, 'data', 'empty.yaml'), '-o', cliOut,
+        work, '-o', cliOut,
       ], { stdio: 'ignore' });
     } catch { code = 1; }
     check('編輯器存出(含 html)的模板 → CLI render exit 0', code === 0 && existsSync(cliOut));

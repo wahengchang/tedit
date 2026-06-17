@@ -15,12 +15,14 @@ const run = promisify(execFile);
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CLI = path.join(ROOT, 'dist', 'cli', 'index.js');
 const DEMO = path.join(ROOT, 'examples', 'demo');
-const TPL = path.join(DEMO, 'templates', 'card.template.json');
-const DATA = path.join(DEMO, 'data', 'sample.yaml');
-const MULTI = path.join(DEMO, 'templates', 'multibind.template.json');
-const DATA_A = path.join(DEMO, 'data', 'a.yaml');
-const DATA_B = path.join(DEMO, 'data', 'b.yaml');
-const DATA_PARTIAL = path.join(DEMO, 'data', 'partial.yaml');
+// D23:一資料夾一專案一模板 → 每個範本一個資料夾,template.json + 同夾資料/資產
+const TPL = path.join(DEMO, 'card', 'template.json');
+const DATA = path.join(DEMO, 'card', 'sample.yaml');
+const EMPTY = path.join(DEMO, 'card', 'empty.yaml');
+const MULTI = path.join(DEMO, 'multibind', 'template.json');
+const DATA_A = path.join(DEMO, 'multibind', 'a.yaml');
+const DATA_B = path.join(DEMO, 'multibind', 'b.yaml');
+const DATA_PARTIAL = path.join(DEMO, 'card', 'partial.yaml'); // 只有 title、無 photo 鍵 → 跨專案安全
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -98,12 +100,12 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
 // 6. 字體未註冊且非內建 → exit 5,指名缺哪個
 {
   const proj = path.join(work, 'nofont');
-  mkdirSync(path.join(proj, 'templates'), { recursive: true });
+  mkdirSync(proj, { recursive: true });
   const t = JSON.parse(readFileSync(TPL, 'utf8'));
   t.elements.find((e) => e.id === 'txt1').fontFamily = 'GhostFont'; // 既非專案註冊、也非內建
-  writeFileSync(path.join(proj, 'templates', 'card.template.json'), JSON.stringify(t));
+  writeFileSync(path.join(proj, 'template.json'), JSON.stringify(t));
   writeFileSync(path.join(proj, 'project.json'), JSON.stringify({ fonts: [] }));
-  const r = await cli(['render', path.join(proj, 'templates', 'card.template.json'), DATA]);
+  const r = await cli(['render', proj, DATA]);
   check('字體未註冊且非內建 → exit 5', r.code === 5, `code=${r.code}`);
   check('  stderr 指名缺字體 GhostFont', r.stderr.includes('GhostFont'), r.stderr.slice(0, 200));
 }
@@ -111,14 +113,14 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
 // 6b. 內建字體(D19):專案沒註冊任何字體,但模板用 Noto Sans TC → 走內建,exit 0
 {
   const proj = path.join(work, 'builtin-font');
-  mkdirSync(path.join(proj, 'templates'), { recursive: true });
+  mkdirSync(proj, { recursive: true });
   const t = JSON.parse(readFileSync(TPL, 'utf8'));
   t.bindings = []; // 去掉圖片綁定,免得還要備圖
   t.elements = t.elements.filter((e) => e.type !== 'image');
-  writeFileSync(path.join(proj, 'templates', 'card.template.json'), JSON.stringify(t));
+  writeFileSync(path.join(proj, 'template.json'), JSON.stringify(t));
   writeFileSync(path.join(proj, 'project.json'), JSON.stringify({ fonts: [] }));
   const out = path.join(work, 'builtin.png');
-  const r = await cli(['render', path.join(proj, 'templates', 'card.template.json'), path.join(DEMO, 'data', 'empty.yaml'), '-o', out]);
+  const r = await cli(['render', proj, EMPTY, '-o', out]);
   check('內建 Noto Sans TC 免註冊可出圖 → exit 0', r.code === 0, `code=${r.code} ${r.stderr.slice(0, 200)}`);
   check('  內建字出圖 PNG 落地', existsSync(out));
 }
@@ -156,7 +158,7 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
   const oDesign = path.join(work, 'm3-design.png'); // 空資料 = 全沿用設計時值
   const rA = await cli(['render', MULTI, DATA_A, '-o', oA]);
   const rB = await cli(['render', MULTI, DATA_B, '-o', oB]);
-  const rD = await cli(['render', MULTI, path.join(DEMO, 'data', 'empty.yaml'), '-o', oDesign]);
+  const rD = await cli(['render', MULTI, EMPTY, '-o', oDesign]);
   check('多綁定模板 render A/B/design 皆 exit 0', rA.code === 0 && rB.code === 0 && rD.code === 0,
     `A=${rA.code} B=${rB.code} D=${rD.code} ${rA.stderr.slice(0,150)}`);
   if (existsSync(oA) && existsSync(oB)) {
@@ -207,9 +209,9 @@ const work = mkdtempSync(path.join(tmpdir(), 'tedit-e2ecli-'));
 
 // 14. D22:含 html 圖層的模板,CLI 經多層合成器出圖(三層交錯)→ exit 0
 {
-  const HTMLTPL = path.join(DEMO, 'templates', 'html-card.template.json');
+  const HTMLTPL = path.join(DEMO, 'html-card', 'template.json');
   const out = path.join(work, 'html-card.png');
-  const r = await cli(['render', HTMLTPL, path.join(DEMO, 'data', 'empty.yaml'), '-o', out]);
+  const r = await cli(['render', HTMLTPL, EMPTY, '-o', out]);
   check('html 圖層模板 render → exit 0', r.code === 0, `code=${r.code} ${r.stderr.slice(0, 200)}`);
   if (existsSync(out)) {
     const png = PNG.sync.read(readFileSync(out));

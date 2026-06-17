@@ -10,6 +10,11 @@
 
 > 🟢 **目前無鎖定車道**:U1 UI 重製已合併 main(merge `fd1b0a7`),`editor.ts` 熱區釋出,B1/B2 解鎖可開。
 
+> ⚠️ **2026-06-17 D23 架構變更(branch `feat/one-template-per-project`)**:資料模型改為 **一資料夾=一專案=一模板**。
+> `template.json`(固定保留檔名,資料夾根)取代舊 `templates/<name>.template.json` + 按名字定址;編輯器砍掉模板列表/首頁/`?template=`;圖片改放 `images/`;`project.json` 降為可選。
+> CLI 與編輯器皆吃「資料夾」。examples/demo、showcase、project1 已遷移;六關測試全綠。詳見 `docs/decisions/D23-one-template-per-project.md`。
+> **本表下方多數路徑敘述仍是舊模型(templates/、assets/images),待後續整段重寫。**
+
 ---
 
 ## 1. 模組結構樹(每檔狀態 + 下一步會動哪)

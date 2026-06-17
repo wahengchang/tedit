@@ -17,7 +17,8 @@ const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇
 let handle: EngineHandle;
 let config: ProjectConfig;
 let fontReg: Record<string, string> = {};
-let templateName = '';
+// D23:一資料夾一專案一模板 → 沒有模板名;projectName 僅供顯示與出圖檔名(取自 project.json name)
+let projectName = 'template';
 let dirty = false;
 
 // U1:zoom 是純視圖縮放(fabric setZoom);設計尺寸在編輯器恆定。
@@ -119,20 +120,15 @@ function updateHistoryButtons() {
 async function init() {
   config = await api<ProjectConfig>('/api/project');
   fontReg = buildFontRegistry(config);
-  const names = await api<string[]>('/api/templates');
-  const wanted = new URLSearchParams(location.search).get('template');
+  projectName = config.name?.trim() || 'template';
 
-  // U2:無 ?template= → 顯示模板首頁(不啟動引擎,讓使用者選/建模板)
-  if (!wanted) {
-    await showStartPage(names);
-    return;
+  // D23:直接載入專案夾的唯一 template.json;不存在(新專案)→ 空白模板,首存即建檔
+  let initial: Template;
+  try {
+    initial = await api<Template>('/api/template');
+  } catch {
+    initial = blankScene(config);
   }
-  templateName = wanted;
-
-  // 已存在 → 載入;不存在(剛從首頁建/直接打網址)→ 空白具名模板,首存即建檔
-  const initial = names.includes(templateName)
-    ? await api<Template>(`/api/templates/${encodeURIComponent(templateName)}`)
-    : blankScene(config);
 
   designW = initial.canvas.width;
   designH = initial.canvas.height;
@@ -149,8 +145,8 @@ async function init() {
   // fitZoom 上限 100%,小畫布維持 1:1 不被放大。(loadScene 已把 canvas 設成 design)
   fitZoom();
 
-  $('#tpl-name').textContent = templateName;
-  $('#status-path').textContent = `templates/${templateName}.template.json`;
+  $('#tpl-name').textContent = projectName;
+  $('#status-path').textContent = 'template.json';
   handle.onChange(renderAll);
   // onChange 也在文字行內編輯後觸發 → 標記 dirty
   handle.onChange(() => markDirty());
@@ -642,7 +638,7 @@ async function setCanvasBg(color: string) {
 // Document settings modal(工具列 doc 鈕):編輯本模板畫布尺寸/背景
 function openDocModal() {
   const c = scene().canvas;
-  ($('#doc-name') as HTMLInputElement).value = templateName;
+  ($('#doc-name') as HTMLInputElement).value = projectName;
   ($('#doc-w') as HTMLInputElement).value = String(Math.round(c.width));
   ($('#doc-h') as HTMLInputElement).value = String(Math.round(c.height));
   const bgInput = $('#doc-bg') as HTMLInputElement;
@@ -877,7 +873,7 @@ function wireKeyboard() {
 async function save() {
   const s = scene();
   try {
-    await api(`/api/templates/${encodeURIComponent(templateName)}`, {
+    await api('/api/template', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(s),
@@ -968,7 +964,7 @@ async function downloadPng() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${templateName}.png`;
+    a.download = `${projectName}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -985,12 +981,12 @@ async function downloadPng() {
 
 // ---------- Save / history modal ----------
 async function openSaveModal() {
-  ($('#save-name') as HTMLInputElement).value = templateName;
+  ($('#save-name') as HTMLInputElement).value = projectName;
   openModal('save-modal');
   const list = $('#history-list');
   list.innerHTML = '<li class="empty">Loading…</li>';
   try {
-    const hist = await api<string[]>(`/api/templates/${encodeURIComponent(templateName)}/history`);
+    const hist = await api<string[]>('/api/template/history');
     if (hist.length === 0) {
       list.innerHTML = '<li class="empty">(no history yet — save once to create one)</li>';
       return;
@@ -1070,7 +1066,7 @@ function renderExportPreview() {
   // CLI
   const strict = ($('#strict-toggle') as HTMLInputElement).checked;
   $('#export-cli').textContent =
-    `tedit render templates/${templateName}.template.json data.yaml -o ${templateName}.png` + (strict ? ' --strict' : '');
+    `tedit render . data.json -o ${projectName}.png` + (strict ? ' --strict' : '');
 
   // 缺值警告(--strict 改變文案:沿用 ↔ exit 4 中止,對應 US-5)
   const warn = $('#export-warn');
@@ -1092,93 +1088,6 @@ function renderExportPreview() {
 /** YAML 純量:單純字串直接出,含特殊字元用 JSON 風格雙引號(YAML 相容) */
 function yamlScalar(s: string): string {
   return /^[\w./@:-]+$/.test(s) ? s : JSON.stringify(s);
-}
-
-// ---------- U2:模板首頁(start page) ----------
-// 與 server SAFE_NAME 同步:英數、-、_、CJK(一-鿿 = U+4E00–U+9FFF)
-const TPL_NAME_RE = /^[\w一-鿿-]+$/;
-
-function gotoTemplate(name: string) {
-  location.search = '?template=' + encodeURIComponent(name);
-}
-
-async function showStartPage(names: string[]) {
-  $('#start-folder').textContent = config.name ? `Project: ${config.name}` : 'Current folder';
-  $('#start-title').textContent = names.length
-    ? 'Pick a template, or create one'
-    : 'No templates here yet — create the first:';
-
-  // 每個模板抓 JSON → 顯示畫布尺寸 + 元素數(平行)
-  const metas = await Promise.all(
-    names.map(async (n) => {
-      try {
-        const t = await api<Template>(`/api/templates/${encodeURIComponent(n)}`);
-        return { name: n, w: t.canvas.width, h: t.canvas.height, count: t.elements.length };
-      } catch {
-        return { name: n, w: 0, h: 0, count: -1 };
-      }
-    }),
-  );
-
-  const cards = metas
-    .map(
-      (m) =>
-        `<div class="start-card" data-tpl="${escapeHtml(m.name)}" title="Open ${escapeHtml(m.name)}">` +
-        `<div class="thumb">▦</div>` +
-        `<div class="meta"><div class="name">${escapeHtml(m.name)}</div>` +
-        `<div class="dim">${m.count < 0 ? '(load failed)' : `${m.w}×${m.h} · ${m.count} elements`}</div></div></div>`,
-    )
-    .join('');
-
-  $('#start-grid').innerHTML =
-    cards +
-    `<div class="start-card create">` +
-    `<div class="ttl">＋ New template</div>` +
-    `<input id="new-name" type="text" placeholder="Template name (a–z 0–9 - _)" autocomplete="off">` +
-    `<button id="create-btn">Create</button>` +
-    `<div class="err" id="create-err"></div></div>`;
-
-  // 卡片點擊 → 開該模板
-  $('#start-grid')
-    .querySelectorAll<HTMLElement>('.start-card[data-tpl]')
-    .forEach((c) => (c.onclick = () => gotoTemplate(c.dataset.tpl!)));
-
-  // 建立新模板:驗名 → PUT 空白具名模板 → 進編輯
-  const nameInput = $('#new-name') as HTMLInputElement;
-  const errEl = $('#create-err');
-  const doCreate = async () => {
-    const name = nameInput.value.trim();
-    errEl.textContent = '';
-    if (!name) {
-      errEl.textContent = 'Enter a name';
-      return;
-    }
-    if (!TPL_NAME_RE.test(name)) {
-      errEl.textContent = 'Allowed: letters, digits, - _';
-      return;
-    }
-    if (names.includes(name)) {
-      gotoTemplate(name); // 已存在 → 直接開,不覆蓋
-      return;
-    }
-    try {
-      await api(`/api/templates/${encodeURIComponent(name)}`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(blankScene(config)),
-      });
-    } catch (e) {
-      errEl.textContent = `Create failed: ${String(e)}`;
-      return;
-    }
-    gotoTemplate(name);
-  };
-  ($('#create-btn') as HTMLElement).onclick = () => void doCreate();
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') void doCreate();
-  });
-
-  $('#start-page').classList.add('open');
 }
 
 void init().catch((e) => {
