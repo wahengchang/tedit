@@ -850,16 +850,6 @@ function defaultCoverCrop(boxW: number, boxH: number, natW: number, natH: number
   };
 }
 
-function currentCropRect(): ImageCrop {
-  if (!cropDraft) return { x: 0, y: 0, width: 1, height: 1 };
-  return {
-    x: clamp((cropDraft.cropX - cropDraft.imageX) / cropDraft.imageW, 0, 1),
-    y: clamp((cropDraft.cropY - cropDraft.imageY) / cropDraft.imageH, 0, 1),
-    width: clamp(cropDraft.cropW / cropDraft.imageW, 0.000001, 1),
-    height: clamp(cropDraft.cropH / cropDraft.imageH, 0.000001, 1),
-  };
-}
-
 function isDefaultCrop(crop: ImageCrop, boxW: number, boxH: number, natW: number, natH: number): boolean {
   const d = defaultCoverCrop(boxW, boxH, natW, natH);
   return Math.abs(crop.x - d.x) < 1e-6
