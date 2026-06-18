@@ -66,6 +66,13 @@ export interface ImageElement extends ElementBase {
   /** 專案內相對路徑,可綁變數 */
   src: string;
   fit: 'cover' | 'contain' | 'stretch';
+  /** 可選裁切視窗(相對原圖 0..1);用於記住使用者在框內看到的區域 */
+  crop?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface ShapeElement extends ElementBase {

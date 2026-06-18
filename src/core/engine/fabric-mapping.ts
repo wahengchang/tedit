@@ -28,6 +28,7 @@ interface TeditMeta {
   /** 載入時 applyFit 設定的 scale;save 以 scaleX/teditLoadScaleX 還原使用者縮放倍率 */
   teditLoadScaleX?: number;
   teditLoadScaleY?: number;
+  teditCrop?: ImageElement['crop'];
   /** html 元素的內容(編輯器用佔位框表示;save 原樣保留,不入畫布渲染) */
   teditHtml?: string;
 }
@@ -115,6 +116,7 @@ export async function elementToObject(el: SceneElement, assetBase: string): Prom
   if (el.type === 'image') {
     meta.teditSrc = el.src;
     meta.teditFit = el.fit;
+    meta.teditCrop = el.crop;
     const imgEl = await decodeImage(assetBase + el.src);
     const natW = imgEl.naturalWidth;
     const natH = imgEl.naturalHeight;
@@ -127,7 +129,7 @@ export async function elementToObject(el: SceneElement, assetBase: string): Prom
       top: el.y + el.height / 2,
       angle: el.rotation,
     });
-    applyFit(obj, el.fit, el.width, el.height, natW, natH);
+    applyFit(obj, el.fit, el.width, el.height, natW, natH, el.crop);
     meta.teditBoxW = el.width;
     meta.teditBoxH = el.height;
     meta.teditLoadScaleX = obj.scaleX;
@@ -166,10 +168,20 @@ function applyFit(
   boxH: number,
   natW: number,
   natH: number,
+  crop?: ImageElement['crop'],
 ): void {
   if (fit === 'stretch') {
     obj.set({ cropX: 0, cropY: 0, width: natW, height: natH, scaleX: boxW / natW, scaleY: boxH / natH });
   } else if (fit === 'cover') {
+    if (crop) {
+      const cropX = crop.x * natW;
+      const cropY = crop.y * natH;
+      const cropW = crop.width * natW;
+      const cropH = crop.height * natH;
+      const scale = boxW / cropW;
+      obj.set({ cropX, cropY, width: cropW, height: cropH, scaleX: scale, scaleY: boxH / cropH });
+      return;
+    }
     const scale = Math.max(boxW / natW, boxH / natH);
     const cropW = boxW / scale;
     const cropH = boxH / scale;
@@ -240,7 +252,7 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
       const userSy = m.scaleY / m.teditLoadScaleY!;
       const boxW = round(m.teditBoxW! * userSx);
       const boxH = round(m.teditBoxH! * userSy);
-      out.elements.push({
+      const imageEl: ImageElement = {
         id: m.teditId,
         x: round(cx - boxW / 2),
         y: round(cy - boxH / 2),
@@ -250,7 +262,9 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
         height: boxH,
         src: m.teditSrc!,
         fit: m.teditFit!,
-      });
+      };
+      if (m.teditCrop) imageEl.crop = m.teditCrop;
+      out.elements.push(imageEl);
     } else {
       const t = m as unknown as Textbox & TeditMeta;
       out.elements.push({
