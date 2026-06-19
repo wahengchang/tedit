@@ -1,102 +1,222 @@
 # tedit
 
 [![CI](https://github.com/wahengchang/tedit/actions/workflows/ci.yml/badge.svg)](https://github.com/wahengchang/tedit/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/tedit.svg)](https://www.npmjs.com/package/tedit)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](https://nodejs.org/)
 
-**本地視覺模板編輯器**:在瀏覽器自由設計版面、把任意元件綁成具名變數存成「模板」;
-之後用 CLI 餵一份資料、headless 產出 PNG。同一模板換不同資料可重複產生。
+**tedit is a local visual template editor for generating PNG images from reusable templates.**
 
-> 最硬的鐵律:**編輯器所見 與 CLI headless 產出,逐像素相同**。
-> 怎麼保證?編輯器頁與 headless 頁載入「同一份 engine bundle」、跑「同一顆 Chromium」。
+Design once in the browser, bind text or image layers to named variables, save the project as `template.json`, and render the same layout again and again from JSON or YAML data with the CLI.
 
-```
-   一個專案 = 一個資料夾 = 一個模板(template.json)
-   設計(瀏覽器編輯器)──▶ projectName/template.json ──▶ tedit render + 資料 ──▶ PNG
-                                                          (換資料重複呼叫 → 換內容、同版面)
-```
+## Why tedit?
 
----
+- **Visual first**: compose templates in a local browser editor instead of hand-writing coordinates.
+- **Data driven**: bind layers such as `title`, `photo`, or `price` and replace them at render time.
+- **Repeatable PNG output**: render many images from one template by swapping YAML or JSON data files.
+- **Local by default**: projects are plain folders on your machine; assets stay with your template.
+- **Editor/CLI parity**: the editor and the headless renderer use the same engine bundle and Chromium path so what you design is what you render.
 
-## 安裝
+## Installation
+
+Install from npm:
 
 ```bash
-git clone https://github.com/wahengchang/tedit.git teditor && cd teditor
+npm install -g tedit
+```
+
+Install the Chromium browser used for headless rendering:
+
+```bash
+npx playwright install chromium
+```
+
+> tedit requires Node.js 20 or newer.
+
+If you prefer not to install globally, use `npx tedit ...` in the commands below.
+
+## Quick start
+
+Create a project folder and open the editor:
+
+```bash
+mkdir my-card
+cd my-card
+tedit ui .
+```
+
+In the editor:
+
+1. Add text, image, or shape layers.
+2. Select a layer and bind an editable property to a variable name such as `title` or `photo`.
+3. Save the project. tedit writes `template.json` in the project folder.
+
+Create a data file:
+
+```yaml
+# data.yaml
+title: Hello from tedit
+photo: images/photo.png
+```
+
+Render a PNG:
+
+```bash
+tedit render . data.yaml -o out.png
+```
+
+Your generated image is written to `out.png`.
+
+## Try the bundled demo from this repository
+
+When working from a cloned checkout, you can run a complete demo project:
+
+```bash
 npm install
-npx playwright install chromium   # headless 出圖需要
 npm run build
+npx playwright install chromium
+npm run ui:demo
 ```
 
-(可選)裝成全域指令:`npm link` 之後即可直接用 `tedit …`;
-否則把下文的 `tedit` 換成 `node dist/cli/index.js`。
-
-## 快速開始(npm 入口,最省事)
+Render the demo template with sample data:
 
 ```bash
-npm run ui:demo                    # 建置 + 開編輯器(範例專案 examples/demo/card)+ 開瀏覽器
-npm run ui -- ./my-project         # 開自己的專案資料夾(內含 template.json;可加 --port 5174 / --no-open)
-npm run render:demo                # 一鍵:card × 兩份資料 → 兩張圖(examples/demo/out/)
-npm run tedit -- vars examples/demo/card   # 任意 CLI 子指令(吃資料夾)
+npm run tedit -- render examples/demo/card examples/demo/card/a.yaml -o examples/demo/out/card-a.png
 ```
 
-| npm 入口 | 作用 |
-|----------|------|
-| `npm run ui [-- <project>] [--port n] [--no-open]` | 建置 + 起編輯器 server + 開瀏覽器(`<project>` = 資料夾) |
-| `npm run ui:demo` | 同上,專案 = `examples/demo/card` |
-| `npm run tedit -- <args>` | 建置 + 跑 CLI(`render` / `vars` / `ui`,等同 `tedit …`) |
-| `npm run render:demo` | 跑範例的一鍵出圖腳本 |
+## CLI reference
 
-## 或直接用 CLI(三個指令)
+`<project>` can be either a project folder or a direct path to its `template.json`.
+
+| Command | Description |
+| --- | --- |
+| `tedit ui [<project>] [--port <n>] [--no-open]` | Start the local editor server and open the browser. |
+| `tedit vars <project> [--json]` | List variables defined in a template. |
+| `tedit render <project> [<data>] [-o <out.png>] [--scale <n>] [--strict]` | Render a template to PNG with optional JSON/YAML data. |
+
+Examples:
 
 ```bash
-npm run build                      # 先建置一次
-# 1) 開編輯器設計(深色介面;設計→拖拉/分層→把元件綁成變數→存檔)
-node dist/cli/index.js ui examples/demo/card
-# 2) 看模板裡有哪些變數
-node dist/cli/index.js vars examples/demo/card
-# 3) 餵一份資料 → 出一張 PNG(資料可省略 → 全走設計時值)
-node dist/cli/index.js render examples/demo/card examples/demo/card/a.yaml -o out.png
+# Open a project in the editor
+tedit ui ./my-card
+
+# Inspect the variables available in a template
+tedit vars ./my-card
+
+# Print variables as JSON
+tedit vars ./my-card --json
+
+# Render with YAML data
+tedit render ./my-card ./my-card/data.yaml -o ./my-card/out.png
+
+# Render at 2x scale
+tedit render ./my-card ./my-card/data.yaml -o ./my-card/out@2x.png --scale 2
+
+# Fail if the data file does not provide every bound variable
+tedit render ./my-card ./my-card/data.yaml -o ./my-card/out.png --strict
 ```
 
-(`npm link` 後即可把上面的 `node dist/cli/index.js` 直接換成 `tedit`。)
+Render behavior:
 
-## CLI 一覽
+- If no data file is provided, tedit renders with the design-time values stored in the template.
+- If a variable is missing, tedit uses the design-time value and prints a warning.
+- With `--strict`, missing variables fail the render.
+- On success, `render` prints only the absolute output path to stdout so scripts can capture it.
 
-`<project>` = 專案資料夾(或其 `template.json`)。
+Exit codes:
 
-| 指令 | 作用 |
-|------|------|
-| `tedit ui [<project>] [--port n] [--no-open]` | 起本地 server + 開編輯器 |
-| `tedit render <project> [<資料>] [-o out.png] [--scale n] [--strict]` | 模板(+可選資料)→ PNG |
-| `tedit vars <project> [--json]` | 列出模板的具名變數 |
+| Code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `1` | General error |
+| `2` | Invalid arguments |
+| `3` | Invalid template |
+| `4` | Missing variable when using `--strict` |
+| `5` | Asset loading failure |
 
-- `render` 的 **stdout 只印產物絕對路徑**(可 `OUT=$(tedit render …)`),其餘走 stderr。
-- 退出碼:`0` 成功 / `1` 其他 / `2` 參數 / `3` 模板 / `4` 缺變數(--strict) / `5` 資產載入失敗。
-- 缺變數:預設沿用設計時值並警告;`--strict` 才報錯(exit 4)。
+## Project structure
 
-## 專案資料夾(D23:一資料夾一專案一模板)
+A tedit project is just one folder with one template:
 
+```text
+my-card/
+├── template.json          # Required template file, created by the editor
+├── data.yaml              # Optional render data
+├── data.json              # Optional render data
+├── images/                # Image assets referenced by the template or data
+├── fonts/                 # Optional custom fonts
+├── project.json           # Optional canvas defaults and font registry
+└── .tedit/history/        # Timestamped template backups created on save
 ```
-my-project/
-├── template.json         # 唯一模板(固定保留檔名,資料夾根)
-├── *.yaml / *.json       # 變數資料(可多份做批量;template.json/project.json 為保留名)
-├── images/               # 圖片素材(模板內寫 "images/foo.png")
-├── fonts/                # 自訂字體(可選)
-├── project.json          # 可選:畫布預設 + 字體註冊表
-└── .tedit/history/        # 每次存檔的時間戳副本
+
+Reserved names:
+
+- `template.json` is the project template.
+- `project.json` is optional project configuration.
+
+Images are resolved relative to the project folder. For example, `photo: images/photo.png` loads `my-card/images/photo.png`.
+
+## Data files
+
+tedit accepts YAML or JSON data. Keys match the variables you created in the editor.
+
+```yaml
+title: Summer Launch
+subtitle: New templates in seconds
+photo: images/launch.png
 ```
 
-字體只認專案 `fonts/`(經 `project.json` 註冊)+ 內建 Noto Sans TC;缺字體 exit 5,不靜默 fallback。
-`npm run ui ./my-project` 直接開該夾的 `template.json`;沒有就以空白模板開新,首次存檔即建檔。
+```json
+{
+  "title": "Summer Launch",
+  "subtitle": "New templates in seconds",
+  "photo": "images/launch.png"
+}
+```
 
-## 開發
+Use `tedit vars <project>` when you are unsure which keys a template expects.
+
+## Fonts
+
+Projects can use built-in Noto Sans TC and optional custom fonts registered from the project `fonts/` directory. If a required font cannot be loaded, rendering exits with code `5` instead of silently falling back to another font.
+
+## Recommended workflow
+
+1. **Design**: run `tedit ui ./project` and save the template.
+2. **Inspect**: run `tedit vars ./project` to confirm the public variable names.
+3. **Render once**: run `tedit render ./project data.yaml -o out.png`.
+4. **Automate**: loop over many YAML/JSON files to generate a batch of images.
+
+Example batch script:
 
 ```bash
-npm run build       # tsc + esbuild(產 dist/,含兩個瀏覽器 bundle)
-npm test            # 單元 + 同像素 parity + CLI 情境 + 編輯器 e2e + 端到端 parity
+for data in ./project/data/*.yaml; do
+  name="$(basename "$data" .yaml)"
+  tedit render ./project "$data" -o "./project/out/$name.png"
+done
+```
+
+## Development
+
+```bash
+npm install
+npm run build
+npm test
 npm run lint
 ```
 
-## 文件
+Useful scripts:
 
-- `docs/OVERVIEW-VISUAL.md` — 全貌視覺化(流程/編輯器功能/架構/核心資料結構)
-- `docs/README-HANDOVER.md` — 交接總覽 + 決議總帳(D01–D21)
-- `docs/ARCHITECTURE.md`、`docs/SPEC-*.md` — 架構與規格合約
+| Script | Description |
+| --- | --- |
+| `npm run ui` | Build and open the editor for a project. |
+| `npm run ui:demo` | Build and open `examples/demo/card`. |
+| `npm run tedit -- <args>` | Build and run the local CLI. |
+| `npm run render:demo` | Render the bundled demo outputs. |
+| `npm test` | Run unit, parity, CLI, editor, e2e, and compositor tests. |
+
+## Documentation
+
+- [`docs/OVERVIEW-VISUAL.md`](docs/OVERVIEW-VISUAL.md) - visual overview of the workflow and architecture.
+- [`docs/SPEC-CLI-AND-FILES.md`](docs/SPEC-CLI-AND-FILES.md) - CLI and project file contract.
+- [`docs/SPEC-SCENE-SCHEMA.md`](docs/SPEC-SCENE-SCHEMA.md) - template schema details.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - architecture notes.
