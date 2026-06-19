@@ -5,7 +5,7 @@
 //   saveScene() → 改 schema → loadScene() → 重選
 // 復用 M1 已驗證的 load/save 映射,中心 origin↔左上角換算交給映射層,絕不手刻數學。
 
-import type { Template, SceneElement } from '../../core/scene/types.js';
+import type { Template, SceneElement, ImageElement } from '../../core/scene/types.js';
 import type { ProjectConfig } from '../../core/project.js';
 import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
@@ -27,6 +27,8 @@ let designW = 0;
 let designH = 0;
 const Z_MIN = 0.1;
 const Z_MAX = 4;
+
+type ImageCrop = NonNullable<ImageElement['crop']>;
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -143,6 +145,38 @@ async function init() {
   const renderOverlay = document.createElement('div');
   renderOverlay.id = 'render-overlay';
   $('#stage').appendChild(renderOverlay);
+  const cropInline = document.createElement('div');
+  cropInline.id = 'image-ui';
+  cropInline.className = 'hidden';
+  cropInline.innerHTML =
+    '<div id="image-ui-outer" class="image-ui-outer">' +
+    '<div class="image-ui-outer-handle" data-pos="nw"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="n"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="ne"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="e"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="se"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="s"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="sw"></div>' +
+    '<div class="image-ui-outer-handle" data-pos="w"></div>' +
+    '<div class="image-ui-outer-rotate"></div>' +
+    '</div>' +
+    '<img id="image-ui-fullimg" class="image-ui-fullimg" alt="">' +
+    '<div id="image-ui-shade-top" class="image-ui-shade"></div>' +
+    '<div id="image-ui-shade-right" class="image-ui-shade"></div>' +
+    '<div id="image-ui-shade-bottom" class="image-ui-shade"></div>' +
+    '<div id="image-ui-shade-left" class="image-ui-shade"></div>' +
+    '<div id="image-ui-cropbox" class="image-ui-cropbox">' +
+    '<div class="image-ui-crop-handle" data-handle="nw"></div>' +
+    '<div class="image-ui-crop-handle edge-h" data-handle="n"></div>' +
+    '<div class="image-ui-crop-handle" data-handle="ne"></div>' +
+    '<div class="image-ui-crop-handle edge-v" data-handle="e"></div>' +
+    '<div class="image-ui-crop-handle" data-handle="se"></div>' +
+    '<div class="image-ui-crop-handle edge-h" data-handle="s"></div>' +
+    '<div class="image-ui-crop-handle" data-handle="sw"></div>' +
+    '<div class="image-ui-crop-handle edge-v" data-handle="w"></div>' +
+    '</div>' +
+    '<div id="image-toolbar" class="image-toolbar"></div>';
+  $('#stage').appendChild(cropInline);
 
   // 載入即「符合視窗」:大畫布(如 1920px)在 100% 會爆出工作區,fitZoom 縮到剛好放得下;
   // fitZoom 上限 100%,小畫布維持 1:1 不被放大。(loadScene 已把 canvas 設成 design)
@@ -164,6 +198,7 @@ async function init() {
   wireZoom();
   wireAlignGuides();
   wireModals();
+  wireInlineCrop();
   // 首頁鈕(U2):有未存變更先確認
   $('#home-btn').onclick = () => {
     if (dirty && !confirm('Unsaved changes. Leave and go to home?')) return;
@@ -176,6 +211,7 @@ function renderAll() {
   renderLayers();
   renderProps();
   renderBadges();
+  renderInlineCrop();
   renderStatus();
   renderVarChip();
   updateHistoryButtons();
@@ -285,6 +321,7 @@ function applyZoom() {
   $('#zoom-pct').textContent = `${Math.round(zoom * 100)}%`;
   $('#status-zoom').textContent = `${Math.round(zoom * 100)}%`;
   renderBadges();
+  renderInlineCrop();
 }
 
 function changeZoom(z: number) {
@@ -316,21 +353,90 @@ function fitZoom() {
 }
 
 function wireZoom() {
+  const wrap = $('#canvas-wrap');
+  let panReady = false;
+  let panActive = false;
+  let panPointerId = -1;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  const isTyping = () => {
+    const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select';
+  };
+  const syncPanClass = () => {
+    wrap.classList.toggle('pan-ready', panReady && !panActive);
+    wrap.classList.toggle('panning', panActive);
+  };
+  const stopPan = () => {
+    panActive = false;
+    panPointerId = -1;
+    syncPanClass();
+  };
+
   $('#zoom-in').onclick = () => changeZoom(zoom * 1.25);
   $('#zoom-out').onclick = () => changeZoom(zoom / 1.25);
   // 點百分比:非 100% → 回 100%;已是 100% → 符合視窗
   $('#zoom-pct').onclick = () => (Math.abs(zoom - 1) < 0.001 ? fitZoom() : changeZoom(1));
 
-  // 滑鼠滾輪 / 觸控板雙指 → 以游標為錨縮放(deltaY<0 放大)。
-  // passive:false 才能 preventDefault 阻止頁面捲動;指數步進讓縮放手感平滑。
-  $('#canvas-wrap').addEventListener(
+  // 一般滾輪/雙指保留原生捲動(方便放大後平移);Ctrl/Cmd+wheel 才縮放。
+  wrap.addEventListener(
     'wheel',
     (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
       zoomAt(zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
     },
     { passive: false },
   );
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' || e.repeat || isTyping() || cropModeActive()) return;
+    e.preventDefault();
+    panReady = true;
+    syncPanClass();
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.code !== 'Space') return;
+    panReady = false;
+    if (!panActive) syncPanClass();
+  });
+  window.addEventListener('blur', () => {
+    panReady = false;
+    stopPan();
+  });
+  wrap.addEventListener(
+    'pointerdown',
+    (e: PointerEvent) => {
+      if (!panReady || e.button !== 0) return;
+      panActive = true;
+      panPointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = wrap.scrollLeft;
+      startTop = wrap.scrollTop;
+      wrap.setPointerCapture(e.pointerId);
+      syncPanClass();
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true,
+  );
+  wrap.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!panActive || e.pointerId !== panPointerId) return;
+    wrap.scrollLeft = startLeft - (e.clientX - startX);
+    wrap.scrollTop = startTop - (e.clientY - startY);
+  });
+  wrap.addEventListener('pointerup', (e: PointerEvent) => {
+    if (e.pointerId !== panPointerId) return;
+    stopPan();
+  });
+  wrap.addEventListener('pointercancel', (e: PointerEvent) => {
+    if (e.pointerId !== panPointerId) return;
+    stopPan();
+  });
 }
 
 // ---------- B2:對齊輔助線 + 吸附(純編輯器;不進場景)----------
@@ -442,6 +548,10 @@ function wireAlignGuides() {
 function renderStatus() {
   const el = selectedElement();
   const sel = $('#status-sel');
+  if (cropModeActive()) {
+    sel.textContent = 'Crop mode: drag crop box or handles, wheel zoom image, Enter save, Esc cancel';
+    return;
+  }
   if (!el) {
     sel.textContent = 'Nothing selected';
     return;
@@ -466,7 +576,7 @@ let dragId: string | null = null;
 
 function renderLayers() {
   const list = $('#layers-list');
-  const selected = handle.selectedId();
+  const selected = selectedSceneId();
   const layers = handle.listLayers().slice().reverse(); // 上而下 = z-order 由高到低
   list.innerHTML = '';
   for (const l of layers) {
@@ -507,9 +617,13 @@ async function reorderLayer(srcId: string, targetId: string) {
 
 // ---------- 屬性面板(可編輯)----------
 function selectedElement(): SceneElement | null {
-  const id = handle.selectedId();
+  const id = selectedSceneId();
   if (!id) return null;
   return scene().elements.find((e) => e.id === id) ?? null;
+}
+
+function selectedSceneId(): string | null {
+  return cropEditId ?? handle.selectedId();
 }
 
 function renderProps() {
@@ -566,6 +680,7 @@ function renderProps() {
   } else if (el.type === 'image') {
     html += `<div class="prop"><span>Source</span><b>${el.src}</b></div>`;
     html += selF('Fit', 'fit', el.fit, ['cover', 'contain', 'stretch']);
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">${cropEditId === el.id ? 'Crop with on-canvas handles and floating actions below.' : 'Use the floating image toolbar below the selection for replace / crop actions.'}</small></div>`;
   } else if (el.type === 'shape') {
     html += selF('Shape', 'shape', el.shape, ['rect', 'ellipse', 'line']);
     html += colorF('Fill', 'fill', el.fill);
@@ -678,6 +793,281 @@ function wireProps() {
     if (ds?.htmlEdit) void openHtmlEditModal();
     else if (ds?.htmlRefresh) forceRefreshSelectedHtml();
   });
+}
+
+let cropEditId: string | null = null;
+let pendingImageReplaceId: string | null = null;
+let cropDraft:
+  | null
+  | {
+      id: string;
+      src: string;
+      natW: number;
+      natH: number;
+      imageX: number;
+      imageY: number;
+      imageW: number;
+      imageH: number;
+      cropX: number;
+      cropY: number;
+      cropW: number;
+      cropH: number;
+    } = null;
+let cropGesture:
+  | null
+  | {
+      pointerId: number;
+      mode: 'move' | 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+      startX: number;
+      startY: number;
+      imageX: number;
+      imageY: number;
+      imageW: number;
+      imageH: number;
+      cropX: number;
+      cropY: number;
+      cropW: number;
+      cropH: number;
+    } = null;
+
+function cropModeActive(): boolean {
+  return cropEditId !== null && cropDraft !== null;
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function defaultCoverCrop(boxW: number, boxH: number, natW: number, natH: number): ImageCrop {
+  const scale = Math.max(boxW / natW, boxH / natH);
+  const cropW = boxW / scale;
+  const cropH = boxH / scale;
+  return {
+    x: (natW - cropW) / 2 / natW,
+    y: (natH - cropH) / 2 / natH,
+    width: cropW / natW,
+    height: cropH / natH,
+  };
+}
+
+function isDefaultCrop(crop: ImageCrop, boxW: number, boxH: number, natW: number, natH: number): boolean {
+  const d = defaultCoverCrop(boxW, boxH, natW, natH);
+  return Math.abs(crop.x - d.x) < 1e-6
+    && Math.abs(crop.y - d.y) < 1e-6
+    && Math.abs(crop.width - d.width) < 1e-6
+    && Math.abs(crop.height - d.height) < 1e-6;
+}
+
+function clampCropDraft() {
+  if (!cropDraft) return;
+  const minSize = 24;
+  cropDraft.cropW = clamp(cropDraft.cropW, minSize, cropDraft.imageW);
+  cropDraft.cropH = clamp(cropDraft.cropH, minSize, cropDraft.imageH);
+  cropDraft.cropX = clamp(cropDraft.cropX, cropDraft.imageX, cropDraft.imageX + cropDraft.imageW - cropDraft.cropW);
+  cropDraft.cropY = clamp(cropDraft.cropY, cropDraft.imageY, cropDraft.imageY + cropDraft.imageH - cropDraft.cropH);
+}
+
+function setCropZoom(nextScale: number, anchorX: number, anchorY: number) {
+  if (!cropDraft) return;
+  const prevScale = cropDraft.imageW / cropDraft.natW;
+  const next = clamp(nextScale, 0.05, 20);
+  const srcAnchorX = (anchorX - cropDraft.imageX) / prevScale;
+  const srcAnchorY = (anchorY - cropDraft.imageY) / prevScale;
+  cropDraft.imageW = cropDraft.natW * next;
+  cropDraft.imageH = cropDraft.natH * next;
+  cropDraft.imageX = anchorX - srcAnchorX * next;
+  cropDraft.imageY = anchorY - srcAnchorY * next;
+  clampCropDraft();
+  renderInlineCrop();
+}
+
+function renderInlineCrop() {
+  const root = document.getElementById('image-ui');
+  const outer = document.getElementById('image-ui-outer');
+  const img = document.getElementById('image-ui-fullimg') as HTMLImageElement | null;
+  const cropbox = document.getElementById('image-ui-cropbox');
+  const toolbar = document.getElementById('image-toolbar');
+  if (!root || !outer || !img || !cropbox || !toolbar) return;
+  const selected = selectedElement();
+  if (!selected || selected.type !== 'image') {
+    root.classList.add('hidden');
+    return;
+  }
+  const el = cropEditId ? scene().elements.find((e) => e.id === cropEditId) : selected;
+  if (!el || el.type !== 'image') {
+    cropEditId = null;
+    cropDraft = null;
+    root.classList.add('hidden');
+    return;
+  }
+  const toolbarMarkup = cropModeActive()
+    ? imageToolbarMarkup(true)
+    : imageToolbarMarkup(false);
+  if (toolbar.innerHTML !== toolbarMarkup) toolbar.innerHTML = toolbarMarkup;
+  root.style.pointerEvents = cropModeActive() ? 'auto' : 'none';
+
+  const boxX = cropModeActive() && cropDraft ? cropDraft.cropX : el.x;
+  const boxY = cropModeActive() && cropDraft ? cropDraft.cropY : el.y;
+  const boxW = cropModeActive() && cropDraft ? cropDraft.cropW : el.width;
+  const boxH = cropModeActive() && cropDraft ? cropDraft.cropH : el.height;
+  root.classList.remove('hidden');
+  toolbar.style.left = `${(boxX + boxW / 2) * zoom}px`;
+  toolbar.style.top = `${(boxY + boxH) * zoom + 16}px`;
+  toolbar.style.transform = 'translateX(-50%)';
+
+  if (!cropModeActive() || !cropDraft) {
+    outer.style.display = 'none';
+    cropbox.style.display = 'none';
+    img.style.display = 'none';
+    for (const id of ['top', 'right', 'bottom', 'left']) {
+      const shade = document.getElementById(`image-ui-shade-${id}`);
+      if (shade) shade.style.display = 'none';
+    }
+    return;
+  }
+
+  const d = cropDraft;
+  outer.style.display = 'block';
+  cropbox.style.display = 'block';
+  img.style.display = 'block';
+  outer.style.left = `${d.imageX * zoom}px`;
+  outer.style.top = `${d.imageY * zoom}px`;
+  outer.style.width = `${d.imageW * zoom}px`;
+  outer.style.height = `${d.imageH * zoom}px`;
+  img.style.left = `${d.imageX * zoom}px`;
+  img.style.top = `${d.imageY * zoom}px`;
+  img.style.width = `${d.imageW * zoom}px`;
+  img.style.height = `${d.imageH * zoom}px`;
+  cropbox.style.left = `${d.cropX * zoom}px`;
+  cropbox.style.top = `${d.cropY * zoom}px`;
+  cropbox.style.width = `${d.cropW * zoom}px`;
+  cropbox.style.height = `${d.cropH * zoom}px`;
+
+  const shades = {
+    top: [d.imageX, d.imageY, d.imageW, d.cropY - d.imageY],
+    right: [d.cropX + d.cropW, d.cropY, d.imageX + d.imageW - (d.cropX + d.cropW), d.cropH],
+    bottom: [d.imageX, d.cropY + d.cropH, d.imageW, d.imageY + d.imageH - (d.cropY + d.cropH)],
+    left: [d.imageX, d.cropY, d.cropX - d.imageX, d.cropH],
+  } as const;
+  for (const [id, [x, y, w, h]] of Object.entries(shades)) {
+    const shade = document.getElementById(`image-ui-shade-${id}`);
+    if (!shade) continue;
+    shade.style.display = 'block';
+    shade.style.left = `${x * zoom}px`;
+    shade.style.top = `${y * zoom}px`;
+    shade.style.width = `${Math.max(0, w) * zoom}px`;
+    shade.style.height = `${Math.max(0, h) * zoom}px`;
+  }
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`image load failed: ${src}`));
+    img.src = '/' + src.replace(/^\//, '');
+  });
+}
+
+async function openImageCropModal() {
+  const el = selectedElement();
+  if (!el || el.type !== 'image') return;
+  cropEditId = el.id;
+  const img = await loadImage(el.src);
+  const applied = el.fit === 'cover' && el.crop ? el.crop : defaultCoverCrop(el.width, el.height, img.naturalWidth, img.naturalHeight);
+  const scale = el.width / (applied.width * img.naturalWidth);
+  const imageW = img.naturalWidth * scale;
+  const imageH = img.naturalHeight * scale;
+  cropDraft = {
+    id: el.id,
+    src: img.src,
+    natW: img.naturalWidth,
+    natH: img.naturalHeight,
+    imageX: el.x - applied.x * imageW,
+    imageY: el.y - applied.y * imageH,
+    imageW,
+    imageH,
+    cropX: el.x,
+    cropY: el.y,
+    cropW: el.width,
+    cropH: el.height,
+  };
+  const fullImg = document.getElementById('image-ui-fullimg') as HTMLImageElement | null;
+  if (fullImg) fullImg.src = img.src;
+  renderProps();
+  renderStatus();
+  renderInlineCrop();
+}
+
+async function commitImageCrop() {
+  if (!cropEditId || !cropDraft) return;
+  const id = cropEditId;
+  const draft = cropDraft;
+  cropEditId = null;
+  cropDraft = null;
+  cropGesture = null;
+  renderInlineCrop();
+  const s = scene();
+  const el = s.elements.find((e) => e.id === id);
+  if (el && el.type === 'image') {
+    el.fit = 'cover';
+    el.x = Math.round(draft.cropX * 1e6) / 1e6;
+    el.y = Math.round(draft.cropY * 1e6) / 1e6;
+    el.width = Math.round(draft.cropW * 1e6) / 1e6;
+    el.height = Math.round(draft.cropH * 1e6) / 1e6;
+    const crop = {
+      x: clamp((draft.cropX - draft.imageX) / draft.imageW, 0, 1),
+      y: clamp((draft.cropY - draft.imageY) / draft.imageH, 0, 1),
+      width: clamp(draft.cropW / draft.imageW, 0.000001, 1),
+      height: clamp(draft.cropH / draft.imageH, 0.000001, 1),
+    };
+    if (isDefaultCrop(crop, el.width, el.height, draft.natW, draft.natH)) delete (el as ImageElement).crop;
+    else el.crop = crop;
+    await commit(s, id);
+  }
+}
+
+function cancelImageCrop() {
+  if (!cropEditId) return;
+  cropEditId = null;
+  cropDraft = null;
+  cropGesture = null;
+  renderInlineCrop();
+  renderProps();
+  renderStatus();
+}
+
+function resetImageCrop() {
+  if (!cropDraft) return;
+  cropDraft.cropX = cropDraft.imageX;
+  cropDraft.cropY = cropDraft.imageY;
+  cropDraft.cropW = cropDraft.imageW;
+  cropDraft.cropH = cropDraft.imageH;
+  renderInlineCrop();
+}
+
+function imageToolbarMarkup(cropMode: boolean): string {
+  if (cropMode) {
+    return [
+      '<button type="button" data-image-crop-reset="1" title="Reset crop" aria-label="Reset crop">',
+      svgIcon('reset'),
+      '</button>',
+      '<button type="button" data-image-crop-cancel="1" title="Cancel crop" aria-label="Cancel crop">',
+      svgIcon('close'),
+      '</button>',
+      '<button type="button" data-image-crop-done="1" title="Apply crop" aria-label="Apply crop">',
+      svgIcon('check'),
+      '</button>',
+    ].join('');
+  }
+  return [
+    '<button type="button" data-image-replace="1" title="Replace image" aria-label="Replace image">',
+    svgIcon('image'),
+    '</button>',
+    '<button type="button" data-image-crop="1" title="Crop" aria-label="Crop">',
+    svgIcon('crop'),
+    '</button>',
+  ].join('');
 }
 
 // ⟳:清掉該層預覽快取 → 立刻重畫(src 檔在外部改過、或想手動刷新時用)
@@ -891,7 +1281,11 @@ function wireToolbar() {
   $('#redo-btn').onclick = () => redo();
   ($('#file-input') as HTMLInputElement).addEventListener('change', (e) => {
     const f = (e.target as HTMLInputElement).files?.[0];
-    if (f) void addImage(f);
+    if (f) {
+      if (pendingImageReplaceId) void replaceSelectedImage(f);
+      else void addImage(f);
+    }
+    pendingImageReplaceId = null;
     (e.target as HTMLInputElement).value = '';
   });
 }
@@ -950,17 +1344,34 @@ async function addHtml() {
 }
 
 async function addImage(file: File) {
+  const path = await uploadImageFile(file);
+  const s = scene();
+  const id = genId(s);
+  s.elements.push({
+    id, type: 'image', x: 100, y: 100, width: 400, height: 300, rotation: 0, src: path, fit: 'cover',
+  });
+  await commit(s, id);
+}
+
+async function uploadImageFile(file: File): Promise<string> {
   const name = sanitizeImageName(file.name);
   const buf = await file.arrayBuffer();
   const { path } = await api<{ path: string }>(`/api/assets/images?name=${encodeURIComponent(name)}`, {
     method: 'POST',
     body: buf,
   });
+  return path;
+}
+
+async function replaceSelectedImage(file: File) {
+  const id = pendingImageReplaceId ?? selectedSceneId();
+  if (!id) return;
   const s = scene();
-  const id = genId(s);
-  s.elements.push({
-    id, type: 'image', x: 100, y: 100, width: 400, height: 300, rotation: 0, src: path, fit: 'cover',
-  });
+  const el = s.elements.find((e) => e.id === id);
+  if (!el || el.type !== 'image') return;
+  el.src = await uploadImageFile(file);
+  delete el.crop;
+  el.fit = 'cover';
   await commit(s, id);
 }
 
@@ -1031,6 +1442,11 @@ function wireKeyboard() {
     const tag = (document.activeElement?.tagName ?? '').toLowerCase();
     const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
 
+    if (cropModeActive() && !typing) {
+      if (e.key === 'Escape') { e.preventDefault(); cancelImageCrop(); return; }
+      if (e.key === 'Enter') { e.preventDefault(); void commitImageCrop(); return; }
+    }
+
     if (e.key === 'Escape') {
       if (modalOpen) closeAllModals();
       else if (!typing) handle.deselect(); // 文字編輯中讓 fabric 自行退出,不搶著取消選取
@@ -1049,6 +1465,7 @@ function wireKeyboard() {
     if (mod && key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if (mod && key === 'y') { e.preventDefault(); redo(); return; }
     if (mod || e.altKey) return; // 其餘修飾鍵組合交給瀏覽器/系統
+    if (cropModeActive()) return;
 
     // 以下單鍵;modal 開著不觸發(避免在對話框後面亂改畫布)
     if (modalOpen) return;
@@ -1100,6 +1517,27 @@ async function save() {
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 }
+function svgIcon(name: 'magic' | 'image' | 'crop' | 'format' | 'reset' | 'close' | 'check'): string {
+  if (name === 'magic') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l5.5-5.5"/><path d="M9 2.5l.8 1.7L11.5 5l-1.7.8L9 7.5l-.8-1.7L6.5 5l1.7-.8L9 2.5z"/><path d="M12.5 8.5l.5 1 .9.5-.9.5-.5 1-.5-1-.9-.5.9-.5.5-1z"/><path d="M2.5 12.5l1 1"/></svg>';
+  }
+  if (name === 'image') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1.5"/><circle cx="5.5" cy="6.3" r="1"/><path d="M3 11l3-2.4 2.2 1.8 2-1.6 2.8 2.2"/></svg>';
+  }
+  if (name === 'crop') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5v8a1 1 0 0 0 1 1h7.5"/><path d="M2.5 5H10.5a1 1 0 0 1 1 1V13.5"/></svg>';
+  }
+  if (name === 'format') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h7l-1.5 3h-4z"/><path d="M6.5 7.5v4.5"/><path d="M10.5 5l2.5 2.5-3.5 3.5H7v-2.5z"/></svg>';
+  }
+  if (name === 'reset') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8a4.5 4.5 0 1 0 1.3-3.2"/><path d="M3.5 3.5v3h3"/></svg>';
+  }
+  if (name === 'close') {
+    return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+  }
+  return '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8l3 3 6-6"/></svg>';
+}
 function toHex(css: string): string {
   // <input type=color> 只吃 #rrggbb;非此格式(transparent/具名色)退回黑色顯示
   return /^#[0-9a-f]{6}$/i.test(css) ? css : '#000000';
@@ -1139,6 +1577,95 @@ function wireModals() {
   $('#he-done').onclick = () => void commitHtmlEdit();
 }
 
+function wireInlineCrop() {
+  const root = document.getElementById('image-ui');
+  const cropbox = document.getElementById('image-ui-cropbox');
+  const toolbar = document.getElementById('image-toolbar');
+  if (!root || !cropbox || !toolbar) return;
+
+  root.addEventListener('wheel', (e: WheelEvent) => {
+    if (!cropModeActive() || !cropDraft) return;
+    e.preventDefault();
+    const rect = root.getBoundingClientRect();
+    const anchorX = (e.clientX - rect.left) / zoom;
+    const anchorY = (e.clientY - rect.top) / zoom;
+    setCropZoom((cropDraft.imageW / cropDraft.natW) * Math.exp(-e.deltaY * 0.0015), anchorX, anchorY);
+  }, { passive: false });
+
+  cropbox.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (!cropModeActive() || !cropDraft || e.button !== 0) return;
+    const handleName = ((e.target as HTMLElement).dataset.handle ?? 'move') as NonNullable<typeof cropGesture>['mode'];
+    cropGesture = {
+      pointerId: e.pointerId,
+      mode: handleName,
+      startX: e.clientX,
+      startY: e.clientY,
+      imageX: cropDraft.imageX,
+      imageY: cropDraft.imageY,
+      imageW: cropDraft.imageW,
+      imageH: cropDraft.imageH,
+      cropX: cropDraft.cropX,
+      cropY: cropDraft.cropY,
+      cropW: cropDraft.cropW,
+      cropH: cropDraft.cropH,
+    };
+    cropbox.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  cropbox.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!cropDraft || !cropGesture || e.pointerId !== cropGesture.pointerId) return;
+    const dx = (e.clientX - cropGesture.startX) / zoom;
+    const dy = (e.clientY - cropGesture.startY) / zoom;
+    const g = cropGesture;
+    cropDraft.cropX = g.cropX;
+    cropDraft.cropY = g.cropY;
+    cropDraft.cropW = g.cropW;
+    cropDraft.cropH = g.cropH;
+    if (g.mode === 'move') {
+      cropDraft.cropX = g.cropX + dx;
+      cropDraft.cropY = g.cropY + dy;
+    } else {
+      const east = g.mode.includes('e');
+      const west = g.mode.includes('w');
+      const north = g.mode.includes('n');
+      const south = g.mode.includes('s');
+      if (west) {
+        cropDraft.cropX = g.cropX + dx;
+        cropDraft.cropW = g.cropW - dx;
+      }
+      if (east) cropDraft.cropW = g.cropW + dx;
+      if (north) {
+        cropDraft.cropY = g.cropY + dy;
+        cropDraft.cropH = g.cropH - dy;
+      }
+      if (south) cropDraft.cropH = g.cropH + dy;
+    }
+    clampCropDraft();
+    renderInlineCrop();
+  });
+  const stopGesture = (e: PointerEvent) => {
+    if (!cropGesture || e.pointerId !== cropGesture.pointerId) return;
+    cropGesture = null;
+  };
+  cropbox.addEventListener('pointerup', stopGesture);
+  cropbox.addEventListener('pointercancel', stopGesture);
+
+  toolbar.addEventListener('click', (e) => {
+    const ds = (e.target as HTMLElement).closest('button')?.dataset;
+    if (!ds) return;
+    if (ds.imageCrop) void openImageCropModal();
+    else if (ds.imageReplace) {
+      const id = selectedSceneId();
+      if (!id) return;
+      pendingImageReplaceId = id;
+      ($('#file-input') as HTMLInputElement).click();
+    } else if (ds.imageCropDone) void commitImageCrop();
+    else if (ds.imageCropReset) resetImageCrop();
+    else if (ds.imageCropCancel) cancelImageCrop();
+  });
+}
+
 // 網頁直接出圖下載:POST 目前場景(含填入的變數值)→ server 子行程跑 CLI render → 回 PNG blob
 async function downloadPng() {
   const btn = $('#download-btn') as HTMLButtonElement;
@@ -1164,9 +1691,13 @@ async function downloadPng() {
       body: JSON.stringify({ scene: scene(), data, strict, scale }),
     });
     if (!res.ok) {
-      const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string };
+      const err = (await res.json().catch(() => ({ error: res.statusText }))) as {
+        error?: string;
+        hint?: string;
+        action?: string;
+      };
       statusEl.className = 'warn-strict';
-      statusEl.textContent = `Failed: ${err.error ?? res.status}`;
+      statusEl.textContent = formatDownloadError(err.error ?? `HTTP ${res.status}`, err.hint, err.action);
       return;
     }
     const blob = await res.blob();
@@ -1186,6 +1717,10 @@ async function downloadPng() {
   } finally {
     btn.disabled = false;
   }
+}
+
+function formatDownloadError(error: string, hint?: string, action?: string): string {
+  return ['Failed: ' + error, hint, action].filter(Boolean).join('\n');
 }
 
 // ---------- Save / history modal ----------

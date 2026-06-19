@@ -23,7 +23,7 @@ const BASE_KEYS = ['id', 'type', 'x', 'y', 'rotation'];
 // 文字元素不存 height(高度由內容推導,見 types.ts 註記)
 const KEYS_BY_TYPE: Record<string, string[]> = {
   text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'color', 'align', 'lineHeight'],
-  image: [...BASE_KEYS, 'width', 'height', 'src', 'fit'],
+  image: [...BASE_KEYS, 'width', 'height', 'src', 'fit', 'crop'],
   shape: [...BASE_KEYS, 'width', 'height', 'shape', 'fill', 'stroke', 'strokeWidth'],
   html: [...BASE_KEYS, 'width', 'height', 'src', 'html'],
 };
@@ -145,6 +145,24 @@ function validateElement(
     if (typeof el.src !== 'string' || el.src.length === 0) err(at('src'), '必須是非空路徑字串');
     if (el.fit !== 'cover' && el.fit !== 'contain' && el.fit !== 'stretch')
       err(at('fit'), '必須是 "cover" | "contain" | "stretch"');
+    if (el.crop !== undefined) {
+      if (!isObject(el.crop)) {
+        err(at('crop'), '必須是物件');
+      } else {
+        const c = el.crop;
+        for (const key of Object.keys(c)) {
+          if (!['x', 'y', 'width', 'height'].includes(key)) err(at(`crop.${key}`), '未知欄位');
+        }
+        if (!isFiniteNumber(c.x) || c.x < 0 || c.x > 1) err(at('crop.x'), '必須是 0..1 數字');
+        if (!isFiniteNumber(c.y) || c.y < 0 || c.y > 1) err(at('crop.y'), '必須是 0..1 數字');
+        if (!isFiniteNumber(c.width) || c.width <= 0 || c.width > 1) err(at('crop.width'), '必須是 >0..1 數字');
+        if (!isFiniteNumber(c.height) || c.height <= 0 || c.height > 1) err(at('crop.height'), '必須是 >0..1 數字');
+        if (isFiniteNumber(c.x) && isFiniteNumber(c.width) && c.x + c.width > 1)
+          err(at('crop.width'), 'x + width 不可超過 1');
+        if (isFiniteNumber(c.y) && isFiniteNumber(c.height) && c.y + c.height > 1)
+          err(at('crop.height'), 'y + height 不可超過 1');
+      }
+    }
   } else if (type === 'shape') {
     if (el.shape !== 'rect' && el.shape !== 'ellipse' && el.shape !== 'line')
       err(at('shape'), '必須是 "rect" | "ellipse" | "line"');
