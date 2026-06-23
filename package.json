@@ -1,6 +1,6 @@
 {
   "name": "@wahengchang2023/tedit",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Local visual template editor: design in browser, render PNG headlessly via CLI",
   "type": "module",
   "bin": {

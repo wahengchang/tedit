@@ -18,6 +18,19 @@
 
 ## 安裝
 
+### 從 npm(使用者,最省事)
+
+```bash
+npm i -g @wahengchang2023/tedit   # 全域安裝,提供 tedit 指令
+npx playwright install chromium    # headless 出圖需要(裝一次即可)
+tedit ui                           # 開編輯器(空白模板)
+```
+
+不想全域安裝也可用 `npx`:`npx @wahengchang2023/tedit ui ./my-project`。
+下文的 `tedit …` 即為此指令。
+
+### 從原始碼(開發)
+
 ```bash
 git clone https://github.com/wahengchang/tedit.git teditor && cd teditor
 npm install
@@ -28,7 +41,10 @@ npm run build
 (可選)裝成全域指令:`npm link` 之後即可直接用 `tedit …`;
 否則把下文的 `tedit` 換成 `node dist/cli/index.js`。
 
-## 快速開始(npm 入口,最省事)
+## 快速開始(原始碼版的 npm 入口)
+
+> 以下 `npm run …` 是 clone 原始碼後的便捷腳本(內含範例專案);
+> 若是用 `npm i` 安裝的使用者,請直接用上面的 `tedit …` 指令。
 
 ```bash
 npm run ui:demo                    # 建置 + 開編輯器(範例專案 examples/demo/card)+ 開瀏覽器
