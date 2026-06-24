@@ -87,6 +87,8 @@
       background-size: 22px 22px;
       overflow: auto; display: grid; place-items: center;
     }
+    #canvas-wrap.pan-ready, #canvas-wrap.pan-ready * { cursor: grab !important; }
+    #canvas-wrap.panning, #canvas-wrap.panning * { cursor: grabbing !important; user-select: none; }
     #stage {
       box-shadow: 0 4px 24px rgba(0,0,0,.5); position: relative;
       transform-origin: top left; /* U1:zoom 用 fabric setZoom,此處僅定位錨點 */
@@ -196,6 +198,66 @@
     #he-code { background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
     .hl-tag { color: #c678dd; } .hl-attr { color: #d19a66; } .hl-str { color: #98c379; } .hl-com { color: #5c6370; font-style: italic; }
     .modal.wide .modal-actions { padding: 10px 16px; border-top: 1px solid var(--border); margin: 0; }
+    #image-ui { position: absolute; inset: 0; pointer-events: none; z-index: 9; }
+    #image-ui.hidden { display: none; }
+    .image-ui-outer {
+      position: absolute; border: 2px solid #2b78ff; border-radius: 2px; pointer-events: none;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+    }
+    .image-ui-outer-handle {
+      position: absolute; width: 14px; height: 14px; border-radius: 999px; background: #fff; border: 4px solid #2b78ff;
+    }
+    .image-ui-outer-handle[data-pos="nw"] { left: -10px; top: -10px; }
+    .image-ui-outer-handle[data-pos="ne"] { right: -10px; top: -10px; }
+    .image-ui-outer-handle[data-pos="sw"] { left: -10px; bottom: -10px; }
+    .image-ui-outer-handle[data-pos="se"] { right: -10px; bottom: -10px; }
+    .image-ui-outer-handle[data-pos="n"] { left: 50%; top: -8px; transform: translateX(-50%); width: 34px; height: 12px; border-radius: 999px; border-width: 3px; }
+    .image-ui-outer-handle[data-pos="s"] { left: 50%; bottom: -8px; transform: translateX(-50%); width: 34px; height: 12px; border-radius: 999px; border-width: 3px; }
+    .image-ui-outer-handle[data-pos="w"] { left: -8px; top: 50%; transform: translateY(-50%); width: 12px; height: 34px; border-radius: 999px; border-width: 3px; }
+    .image-ui-outer-handle[data-pos="e"] { right: -8px; top: 50%; transform: translateY(-50%); width: 12px; height: 34px; border-radius: 999px; border-width: 3px; }
+    .image-ui-outer-rotate {
+      position: absolute; left: 50%; top: -46px; width: 14px; height: 14px; transform: translateX(-50%);
+      border-radius: 999px; background: #2b78ff; border: 3px solid #fff;
+    }
+    .image-ui-outer-rotate::before {
+      content: ''; position: absolute; left: 50%; top: 14px; width: 2px; height: 18px; transform: translateX(-50%); background: #2b78ff;
+    }
+    .image-ui-cropbox {
+      position: absolute; border: 2px dashed #111; background: rgba(255,255,255,.08); pointer-events: auto;
+      touch-action: none; box-shadow: 0 0 0 1px #fff inset;
+    }
+    .image-ui-fullimg {
+      position: absolute; left: 0; top: 0; user-select: none; -webkit-user-drag: none; pointer-events: none;
+    }
+    .image-ui-shade {
+      position: absolute; background: rgba(0,0,0,.38); pointer-events: none;
+    }
+    .image-ui-crop-handle {
+      position: absolute; width: 16px; height: 16px; background: #111; border: 2px solid #fff; box-shadow: 0 0 0 1px #111;
+      pointer-events: auto;
+    }
+    .image-ui-crop-handle.edge-h { width: 28px; height: 12px; }
+    .image-ui-crop-handle.edge-v { width: 12px; height: 28px; }
+    .image-ui-crop-handle[data-handle="nw"] { left: -8px; top: -8px; cursor: nwse-resize; }
+    .image-ui-crop-handle[data-handle="ne"] { right: -8px; top: -8px; cursor: nesw-resize; }
+    .image-ui-crop-handle[data-handle="sw"] { left: -8px; bottom: -8px; cursor: nesw-resize; }
+    .image-ui-crop-handle[data-handle="se"] { right: -8px; bottom: -8px; cursor: nwse-resize; }
+    .image-ui-crop-handle[data-handle="n"] { left: 50%; top: -6px; transform: translateX(-50%); cursor: ns-resize; }
+    .image-ui-crop-handle[data-handle="s"] { left: 50%; bottom: -6px; transform: translateX(-50%); cursor: ns-resize; }
+    .image-ui-crop-handle[data-handle="w"] { left: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .image-ui-crop-handle[data-handle="e"] { right: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .image-toolbar {
+      position: absolute; display: flex; gap: 4px; align-items: center; padding: 6px;
+      border-radius: 999px; background: rgba(255,255,255,.97); border: 1px solid rgba(0,0,0,.08);
+      box-shadow: 0 8px 22px rgba(0,0,0,.16); pointer-events: auto;
+    }
+    .image-toolbar button {
+      width: 28px; height: 28px; padding: 0; border-radius: 999px; background: transparent; border: none; color: #4b4b4b;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .image-toolbar button:hover { background: rgba(43,120,255,.1); color: #2b78ff; }
+    .image-toolbar button:disabled { opacity: .35; cursor: default; }
+    .image-toolbar button:disabled:hover { background: transparent; color: #444; }
     /* 出圖預覽中的轉圈提示(蓋在該 html 圖層上,讓使用者知道在算、不是壞了) */
     #render-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
     .render-spin { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px;
@@ -234,7 +296,7 @@
       border-radius: 6px; padding: 7px 16px; cursor: pointer;
     }
     .dl-row button:disabled { opacity: .6; cursor: default; }
-    #dl-status { font-size: 12px; color: var(--muted); }
+    #dl-status { font-size: 12px; color: var(--muted); white-space: pre-line; }
     /* U2:start page(模板首頁;無 ?template= 時顯示) */
     #start-page {
       position: fixed; inset: 0; z-index: 100; background: var(--bg);

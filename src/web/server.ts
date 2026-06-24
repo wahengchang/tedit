@@ -65,6 +65,19 @@ function historyTimestamp(d = new Date()): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+function classifyRenderFailure(code: number, stderr: string): { error: string; hint?: string; action?: string; code: number } {
+  const raw = stderr.trim() || `render exit ${code}`;
+  if (raw.includes("Executable doesn't exist") || raw.includes('playwright install')) {
+    return {
+      code,
+      error: 'This machine is missing the Playwright Chromium runtime required for PNG export.',
+      hint: 'The template is fine. PNG export cannot start until the local headless browser dependency is installed.',
+      action: 'Run `npx playwright install chromium` in the project root, then retry.',
+    };
+  }
+  return { error: raw, code };
+}
+
 async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, urlPath: string): Promise<void> {
   // GET /api/project
   if (urlPath === '/api/project' && req.method === 'GET') {
@@ -180,7 +193,7 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
       const { code, stderr } = await runCli(cliArgs);
       if (code !== 0) {
         // exit 4 = 缺變數(--strict);其餘渲染/資產錯
-        send(res, code === 4 ? 422 : 500, JSON.stringify({ error: stderr.trim() || `render exit ${code}`, code }));
+        send(res, code === 4 ? 422 : 500, JSON.stringify(classifyRenderFailure(code, stderr)));
         return;
       }
       const png = await readFile(outFile);

@@ -38,8 +38,12 @@ jobs:
         run: npm ci
 
       # parity / e2e / compositor 測試靠 playwright 無頭 chromium 算圖
+      # ubuntu runner 預載的 azure-cli apt source 偶爾 403,會讓 --with-deps 的
+      # apt-get update 整個失敗;先移掉該 source 再裝,不影響 chromium 系統依賴
       - name: Install Playwright chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+          npx playwright install --with-deps chromium
 
       # npm test 內含 build → unit → parity → cli → editor → e2e → compositor
       - name: Test
