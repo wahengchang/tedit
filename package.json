@@ -1,6 +1,6 @@
 {
   "name": "@wahengchang2023/tedit",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Local visual template editor: design in browser, render PNG headlessly via CLI",
   "type": "module",
   "bin": {
@@ -8,7 +8,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "docs/images"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
