@@ -38,6 +38,24 @@ It runs entirely on your machine — the editor is a local server, the renderer 
 
 ---
 
+## Built for human-in-the-loop AI workflows
+
+tedit is designed for the part of an AI pipeline where a human stays in the loop. The editor and the file format are two views of the **same** thing, so a person and an agent can work on one template without the result drifting apart.
+
+- **Everything is JSON — an agent can do everything a human can.** The template, every layer (text, image, shape, and full HTML/CSS/SVG), and all variable bindings are plain JSON. Anything you'd do by hand in the editor — produce a layout, add an HTML layer, rebind a variable — an LLM can do by emitting or editing JSON. No GUI automation, no screen-scraping.
+- **One artifact, edited by both.** Humans tweak `template.json` visually; agents generate or modify it programmatically; both operate on the *same* file. The visual editor is where a human reviews and corrects what the AI produced.
+- **Deterministic, so review actually means something.** The editor preview and the CLI render are pixel-identical (same engine bundle, same Chromium). Unlike diffusion image models, the same input always yields the same image — exact text, exact layout, every run. What a human approves in the editor is exactly what ships from the CLI.
+
+A typical loop: an agent drafts `template.json` (layout + HTML layers + bindings) → a human reviews and adjusts in `tedit ui` → the pipeline renders many PNGs by swapping data files, every one matching what the human signed off on.
+
+![template rendered into data-driven variants](https://raw.githubusercontent.com/wahengchang/tedit/chore/prepublish-cleanup/docs/images/data-driven-render.png)
+
+Because an HTML layer is just markup, it's a natural target for an LLM — generate a gradient, a chart, or a badge as `<html>`, drop it in as a layer, and it renders inside the same canvas:
+
+![HTML accepted as an iframe layer](https://raw.githubusercontent.com/wahengchang/tedit/chore/prepublish-cleanup/docs/images/html-iframe-layer.png)
+
+---
+
 ## See it
 
 The editor: layers on the left, canvas in the middle, properties + variable binding on the right. Selected layers show their `{variable}` tag on canvas.
