@@ -42,11 +42,11 @@ It runs entirely on your machine — the editor is a local server, the renderer 
 
 The editor: layers on the left, canvas in the middle, properties + variable binding on the right. Selected layers show their `{variable}` tag on canvas.
 
-![tedit editor](docs/images/template_ui.png)
+![tedit editor](https://raw.githubusercontent.com/wahengchang/tedit/main/docs/images/template_ui.png)
 
 Layers can also be raw **HTML/CSS/SVG**, edited live with a code panel — useful for gradients, charts, badges, and anything easier to express in markup than to drag by hand.
 
-![tedit HTML layer editor](docs/images/html_editor.png)
+![tedit HTML layer editor](https://raw.githubusercontent.com/wahengchang/tedit/main/docs/images/html_editor.png)
 
 Then the last step is one command — turn that design into a PNG from the terminal:
 
