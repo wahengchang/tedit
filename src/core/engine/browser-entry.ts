@@ -1,7 +1,7 @@
 // engine.bundle.js 入口 — 編輯器頁與 headless 頁共用同一份 bundle(D06/D11 結構保證)。
 // 對頁面暴露 window.teditEngine;渲染完成信號 = window.__renderDone(守門後才置真)。
 
-import { Canvas, StaticCanvas, Pattern, type FabricObject } from 'fabric';
+import { Canvas, StaticCanvas, Pattern, Textbox, type FabricObject } from 'fabric';
 import type { Template, SceneElement } from '../scene/types.js';
 import type { FontFaceSpec } from '../project.js';
 import { load, save } from './fabric-mapping.js';
@@ -35,6 +35,12 @@ export interface EngineHandle {
    * imageUrl=null → 還原虛線佔位框。內容點陣化成 fabric Pattern → z-order/控制柄/存檔都不變。
    */
   setHtmlPreview(id: string, imageUrl: string | null): Promise<void>;
+  /**
+   * 對「目前正在編輯的文字元素的選取範圍」套用逐字樣式(PR2)。
+   * 需在文字編輯態(雙擊進入)且有選取一段字;回傳是否真的套用了。
+   * 樣式活在 fabric 物件上,saveScene 時由映射層讀回成 runs。
+   */
+  applyRunStyle(style: { color?: string; fontWeight?: number }): boolean;
 }
 
 function teditId(obj: FabricObject): string | undefined {
@@ -148,6 +154,23 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
       });
       obj.setCoords();
       canvas.requestRenderAll();
+    },
+    applyRunStyle(style) {
+      if (!(canvas instanceof Canvas)) return false;
+      const obj = canvas.getActiveObject();
+      if (!obj || !(obj instanceof Textbox)) return false;
+      const tb = obj as Textbox & { isEditing?: boolean; selectionStart?: number; selectionEnd?: number };
+      if (!tb.isEditing) return false; // 需在編輯態才有選取範圍
+      const start = tb.selectionStart ?? 0;
+      const end = tb.selectionEnd ?? 0;
+      if (end <= start) return false; // 沒選到字
+      const patch: Record<string, string | number> = {};
+      if (typeof style.color === 'string') patch.fill = style.color;
+      if (typeof style.fontWeight === 'number') patch.fontWeight = style.fontWeight;
+      if (Object.keys(patch).length === 0) return false;
+      tb.setSelectionStyles(patch, start, end);
+      canvas.requestRenderAll();
+      return true;
     },
   };
 }

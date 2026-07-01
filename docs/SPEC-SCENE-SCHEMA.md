@@ -48,10 +48,15 @@ interface TextElement extends ElementBase {
   content: string;             // 文字內容(可綁變數;此值即「設計時預設值」)
   fontFamily: string;          // 須存在於 project.json fonts[] 或為內建預設字
   fontSize: number;            // px
+  fontWeight?: number;         // 100–900,選填(省略=400;PR1);family 缺該字重→瀏覽器合成粗體
   color: string;               // CSS 色值
   align: "left" | "center" | "right";
   lineHeight: number;          // 倍數,如 1.4
+  runs?: TextRun[];            // 逐字樣式(選填;PR2)。內容被綁定覆蓋時丟棄
 }
+
+// 逐字樣式區間(PR2):start/end = content 的 grapheme 索引(end 不含);至少一個 color / fontWeight
+interface TextRun { start: number; end: number; color?: string; fontWeight?: number; }
 
 interface ImageElement extends ElementBase {
   type: "image";

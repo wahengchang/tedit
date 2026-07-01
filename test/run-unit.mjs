@@ -162,5 +162,41 @@ const baseScene = () => ({
   check('同 (family,weight) 專案覆蓋內建', override[builtin].filter((s) => s.weight === 400).length === 1 && override[builtin][0].url === '/fonts/MyRegular.woff2');
 }
 
+// 12. validate:text.runs(PR2 逐字樣式,選填)
+{
+  const ok = structuredClone(baseScene());
+  ok.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }, { start: 2, end: 4, fontWeight: 700 }];
+  check('runs 合法(color / fontWeight 各一)→ 通過', validateTemplate(ok).ok === true);
+
+  const bads = [
+    ['start 負數', [{ start: -1, end: 2, color: '#000' }], 'start'],
+    ['end <= start', [{ start: 2, end: 2, color: '#000' }], 'end'],
+    ['end 超出 content 長度', [{ start: 0, end: 99, color: '#000' }], 'end'],
+    ['fontWeight 越界', [{ start: 0, end: 1, fontWeight: 950 }], 'fontWeight'],
+    ['color 與 fontWeight 都缺', [{ start: 0, end: 1 }], 'runs[0]'],
+    ['未知欄位', [{ start: 0, end: 1, color: '#000', italic: true }], 'italic'],
+  ];
+  for (const [label, runs, needlePath] of bads) {
+    const b = structuredClone(baseScene());
+    b.elements[0].runs = runs;
+    const r = validateTemplate(b);
+    check(`runs ${label} → 失敗`, r.ok === false && r.errors.some((e) => e.path.includes(needlePath)));
+  }
+}
+
+// 13. resolver:content 被綁定覆蓋 → runs 丟棄;缺變數沿用設計值 → runs 保留(PR2 政策)
+{
+  const scene = baseScene();
+  scene.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }];
+  const injected = resolveScene(scene, { title: '新標題', photo: 'b.png' });
+  check('content 被覆蓋 → runs 丟棄', injected.scene.elements[0].runs === undefined);
+  check('resolver 純函式:輸入 runs 未被改動', Array.isArray(scene.elements[0].runs));
+
+  const scene2 = baseScene();
+  scene2.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }];
+  const fallback = resolveScene(scene2, { photo: 'b.png' }); // title 缺 → 沿用設計值
+  check('content 缺變數沿用設計值 → runs 保留', Array.isArray(fallback.scene.elements[0].runs));
+}
+
 console.error(failures === 0 ? '\n單元測試全部通過' : `\n單元測試 ${failures} 項失敗`);
 process.exit(failures === 0 ? 0 : 1);

@@ -1,0 +1,26 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 800, "height": 400, "background": "#ffffff" },
+  "elements": [
+    {
+      "id": "t1", "type": "text", "x": 60, "y": 60, "width": 680, "rotation": 0,
+      "content": "Highlight ONE word here.",
+      "fontFamily": "Noto Sans TC", "fontSize": 34, "color": "#1a1a1a",
+      "align": "left", "lineHeight": 1.4,
+      "runs": [
+        { "start": 10, "end": 13, "color": "#7c3aed" },
+        { "start": 14, "end": 18, "color": "#c026d3", "fontWeight": 700 }
+      ]
+    },
+    {
+      "id": "t2", "type": "text", "x": 60, "y": 200, "width": 680, "rotation": 0,
+      "content": "春江潮水連海平,海上明月共潮生。",
+      "fontFamily": "Noto Sans TC", "fontSize": 34, "fontWeight": 500, "color": "#333333",
+      "align": "left", "lineHeight": 1.5,
+      "runs": [
+        { "start": 0, "end": 5, "color": "#0ea5e9", "fontWeight": 700 }
+      ]
+    }
+  ],
+  "bindings": []
+}

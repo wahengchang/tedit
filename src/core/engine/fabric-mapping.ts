@@ -2,7 +2,7 @@
 // 來源:M0 spike 勝方原型(S01/D13),粗糙版,M1 整理。
 
 import { Canvas, StaticCanvas, Rect, Ellipse, Line, Textbox, FabricImage, FabricObject } from 'fabric';
-import type { Template, SceneElement, TextElement, ImageElement, ShapeElement, HtmlElement } from '../scene/types.js';
+import type { Template, SceneElement, TextElement, TextRun, ImageElement, ShapeElement, HtmlElement } from '../scene/types.js';
 import { decodeImage } from './gate.js';
 
 // fabric 行高含內部 _fontSizeMult=1.13 係數;schema lineHeight 是純倍數,映射層吸收。
@@ -157,8 +157,66 @@ export async function elementToObject(el: SceneElement, assetBase: string): Prom
     top: t.y + obj.height / 2,
     angle: t.rotation,
   });
+  applyRuns(obj, t.runs);
   obj.set(meta as unknown as Record<string, unknown>);
   return obj;
+}
+
+/** grapheme 陣列(fabric 內部;逐字樣式以 grapheme 為單位定位) */
+function graphemeCount(obj: Textbox): number {
+  return (obj as unknown as { _text: string[] })._text.length;
+}
+
+/**
+ * runs(content grapheme 區間)→ fabric 逐字 styles。
+ * 用 setSelectionStyles 的「扁平 grapheme 索引」,換行/包行的行內座標由 fabric 自行換算,
+ * 避開 Textbox styles + splitByGrapheme 的行索引地雷。索引越界(如綁定後內容變短)一律夾住。
+ */
+function applyRuns(obj: Textbox, runs: TextRun[] | undefined): void {
+  if (!runs || runs.length === 0) return;
+  const n = graphemeCount(obj);
+  for (const run of runs) {
+    const start = Math.max(0, Math.min(run.start, n));
+    const end = Math.max(start, Math.min(run.end, n));
+    if (end <= start) continue;
+    const patch: Record<string, string | number> = {};
+    if (typeof run.color === 'string') patch.fill = run.color;
+    if (typeof run.fontWeight === 'number') patch.fontWeight = run.fontWeight;
+    if (Object.keys(patch).length === 0) continue;
+    obj.setSelectionStyles(patch, start, end);
+  }
+}
+
+/**
+ * fabric 逐字 styles → runs。逐 grapheme 讀 complete style,和元素級 color/fontWeight 比對,
+ * 只把「有偏離」的相鄰 grapheme 收斂成區間。無偏離 → 不輸出 runs(保持往返相等)。
+ */
+function extractRuns(obj: Textbox, baseColor: string, baseWeight: number): TextRun[] {
+  const n = graphemeCount(obj);
+  if (n === 0) return [];
+  const styles = obj.getSelectionStyles(0, n, true);
+  const runs: TextRun[] = [];
+  let cur: TextRun | null = null;
+  for (let i = 0; i < n; i++) {
+    const st = (styles[i] ?? {}) as { fill?: unknown; fontWeight?: unknown };
+    const fill = typeof st.fill === 'string' ? st.fill : undefined;
+    const fwNum = Number(st.fontWeight);
+    const color = fill !== undefined && fill !== baseColor ? fill : undefined;
+    const weight = Number.isFinite(fwNum) && fwNum !== baseWeight ? fwNum : undefined;
+    if (color === undefined && weight === undefined) {
+      cur = null;
+      continue;
+    }
+    if (cur && cur.end === i && cur.color === color && cur.fontWeight === weight) {
+      cur.end = i + 1;
+    } else {
+      cur = { start: i, end: i + 1 };
+      if (color !== undefined) cur.color = color;
+      if (weight !== undefined) cur.fontWeight = weight;
+      runs.push(cur);
+    }
+  }
+  return runs;
 }
 
 /** fit 模式 → fabric 的 crop + scale(cover 置中裁切) */
@@ -284,7 +342,11 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
       };
       // 400 不回寫,保持既有樣本往返相等(照 image.crop 選填慣例)
       const fw = Number(t.fontWeight);
-      if (Number.isFinite(fw) && fw !== 400) textEl.fontWeight = fw;
+      const baseWeight = Number.isFinite(fw) ? fw : 400;
+      if (baseWeight !== 400) textEl.fontWeight = baseWeight;
+      // 逐字 styles → runs(無偏離則不輸出)
+      const runs = extractRuns(t, textEl.color, baseWeight);
+      if (runs.length > 0) textEl.runs = runs;
       out.elements.push(textEl);
     }
   }
