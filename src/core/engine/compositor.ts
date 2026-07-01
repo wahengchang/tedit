@@ -15,6 +15,7 @@
 
 import { StaticCanvas, FabricImage } from 'fabric';
 import type { Template } from '../scene/types.js';
+import type { FontFaceSpec } from '../project.js';
 import { elementToObject } from './fabric-mapping.js';
 import { loadFont, decodeImage, markRenderStart, markRenderDone } from './gate.js';
 
@@ -67,7 +68,7 @@ function layerCanvas(container: HTMLElement, z: number, w: number, h: number): H
 export async function renderLayers(
   container: HTMLElement,
   scene: Template,
-  fontRegistry: Record<string, string>,
+  fontRegistry: Record<string, FontFaceSpec[]>,
   assetBase: string,
 ): Promise<void> {
   markRenderStart();
@@ -77,12 +78,12 @@ export async function renderLayers(
   container.style.height = `${scene.canvas.height}px`;
   container.style.overflow = 'hidden';
 
-  // 父頁字體(給文字層),要先載
+  // 父頁字體(給文字層),要先載;同 family 多字重全載
   for (const el of scene.elements) {
     if (el.type !== 'text') continue;
-    const url = fontRegistry[el.fontFamily];
-    if (!url) throw new Error(`字體未註冊:${el.fontFamily}`);
-    await loadFont(el.fontFamily, url);
+    const specs = fontRegistry[el.fontFamily];
+    if (!specs || specs.length === 0) throw new Error(`字體未註冊:${el.fontFamily}`);
+    for (const spec of specs) await loadFont(el.fontFamily, spec.url, spec.weight);
   }
 
   // 背景 = 最底層(z 0)

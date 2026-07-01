@@ -128,5 +128,75 @@ const baseScene = () => ({
   check('html 缺 height → 失敗', validateTemplate(noH).ok === false);
 }
 
+// 10. validate:text.fontWeight(PR1 字重,選填 100..900)
+{
+  const withWeight = structuredClone(baseScene());
+  withWeight.elements[0].fontWeight = 700;
+  check('text.fontWeight=700 → 通過', validateTemplate(withWeight).ok === true);
+
+  const noWeight = structuredClone(baseScene());
+  check('text 省略 fontWeight → 通過(選填)', validateTemplate(noWeight).ok === true);
+
+  for (const bad of [99, 901, 'bold', null]) {
+    const b = structuredClone(baseScene());
+    b.elements[0].fontWeight = bad;
+    const r = validateTemplate(b);
+    check(`text.fontWeight=${JSON.stringify(bad)} → 失敗`, r.ok === false && r.errors.some((e) => e.path.includes('fontWeight')));
+  }
+}
+
+// 11. buildFontRegistry:同 family 多字重(PR1 不打包、使用者自帶 Bold)
+{
+  const { buildFontRegistry, BUILTIN_FONTS } = await imp('core/project.js');
+  const builtin = BUILTIN_FONTS[0].family;
+
+  const base = buildFontRegistry({ fonts: [] });
+  check('內建字進註冊表(family→[{url,weight}])', Array.isArray(base[builtin]) && base[builtin].some((s) => s.weight === 400));
+
+  const withBold = buildFontRegistry({ fonts: [{ family: builtin, file: 'fonts/Bold.woff2', weight: 700 }] });
+  const weights = withBold[builtin].map((s) => s.weight).sort();
+  check('自帶 Bold 700 → 同 family 追加字重', weights.includes(400) && weights.includes(700));
+  check('Bold URL = /相對路徑', withBold[builtin].find((s) => s.weight === 700).url === '/fonts/Bold.woff2');
+
+  const override = buildFontRegistry({ fonts: [{ family: builtin, file: 'fonts/MyRegular.woff2' }] });
+  check('同 (family,weight) 專案覆蓋內建', override[builtin].filter((s) => s.weight === 400).length === 1 && override[builtin][0].url === '/fonts/MyRegular.woff2');
+}
+
+// 12. validate:text.runs(PR2 逐字樣式,選填)
+{
+  const ok = structuredClone(baseScene());
+  ok.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }, { start: 2, end: 4, fontWeight: 700 }];
+  check('runs 合法(color / fontWeight 各一)→ 通過', validateTemplate(ok).ok === true);
+
+  const bads = [
+    ['start 負數', [{ start: -1, end: 2, color: '#000' }], 'start'],
+    ['end <= start', [{ start: 2, end: 2, color: '#000' }], 'end'],
+    ['end 超出 content 長度', [{ start: 0, end: 99, color: '#000' }], 'end'],
+    ['fontWeight 越界', [{ start: 0, end: 1, fontWeight: 950 }], 'fontWeight'],
+    ['color 與 fontWeight 都缺', [{ start: 0, end: 1 }], 'runs[0]'],
+    ['未知欄位', [{ start: 0, end: 1, color: '#000', italic: true }], 'italic'],
+  ];
+  for (const [label, runs, needlePath] of bads) {
+    const b = structuredClone(baseScene());
+    b.elements[0].runs = runs;
+    const r = validateTemplate(b);
+    check(`runs ${label} → 失敗`, r.ok === false && r.errors.some((e) => e.path.includes(needlePath)));
+  }
+}
+
+// 13. resolver:content 被綁定覆蓋 → runs 丟棄;缺變數沿用設計值 → runs 保留(PR2 政策)
+{
+  const scene = baseScene();
+  scene.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }];
+  const injected = resolveScene(scene, { title: '新標題', photo: 'b.png' });
+  check('content 被覆蓋 → runs 丟棄', injected.scene.elements[0].runs === undefined);
+  check('resolver 純函式:輸入 runs 未被改動', Array.isArray(scene.elements[0].runs));
+
+  const scene2 = baseScene();
+  scene2.elements[0].runs = [{ start: 0, end: 2, color: '#7c3aed' }];
+  const fallback = resolveScene(scene2, { photo: 'b.png' }); // title 缺 → 沿用設計值
+  check('content 缺變數沿用設計值 → runs 保留', Array.isArray(fallback.scene.elements[0].runs));
+}
+
 console.error(failures === 0 ? '\n單元測試全部通過' : `\n單元測試 ${failures} 項失敗`);
 process.exit(failures === 0 ? 0 : 1);

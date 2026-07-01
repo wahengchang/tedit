@@ -8,6 +8,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import type { Template } from '../../core/scene/types.js';
+import type { FontFaceSpec } from '../../core/project.js';
 
 const DIST_WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'web');
 
@@ -69,8 +70,8 @@ export interface RenderOptions {
   scene: Template;
   /** 專案根(資產 URL 的根) */
   projectDir: string;
-  /** family → 專案內相對路徑 */
-  fontRegistry: Record<string, string>;
+  /** family → 該 family 的字面清單(url + weight) */
+  fontRegistry: Record<string, FontFaceSpec[]>;
   /** 輸出倍率 = deviceScaleFactor */
   scale: number;
 }

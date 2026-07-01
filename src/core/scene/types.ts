@@ -53,10 +53,33 @@ export interface TextElement extends ElementBase {
   /** 須存在於 project.json fonts[] 或為內建預設字 */
   fontFamily: string;
   fontSize: number;
+  /**
+   * 字重 100–900(選填,預設 400 Regular)。
+   * family 沒註冊該字重的實體字檔時,瀏覽器以「合成粗體」(faux bold)兜底;
+   * 編輯器與 headless 同一顆引擎,合成結果一致故同像素不破。
+   * 省略等同 400;save 時 400 不回寫(保持既有樣本往返相等)。
+   */
+  fontWeight?: number;
   color: string;
   align: 'left' | 'center' | 'right';
   /** 倍數,如 1.4 */
   lineHeight: number;
+  /**
+   * 逐字樣式區間(PR2):同一行內把某段字獨立上色 / 加粗。
+   * start/end = content 的 grapheme 索引(end 不含);未列的欄位沿用元素級 color/fontWeight。
+   * 省略或空陣列 = 全段用元素級樣式。內容被變數綁定覆蓋時 runs 會被丟棄(見 resolver)。
+   */
+  runs?: TextRun[];
+}
+
+/** 逐字樣式區間;至少要有 color 或 fontWeight 其一(否則無意義) */
+export interface TextRun {
+  start: number;
+  end: number;
+  /** CSS 色值;省略 = 沿用元素級 color */
+  color?: string;
+  /** 100–900;省略 = 沿用元素級 fontWeight */
+  fontWeight?: number;
 }
 
 export interface ImageElement extends ElementBase {

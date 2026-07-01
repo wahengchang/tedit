@@ -63,6 +63,8 @@ export function resolveScene(scene: Template, data: Record<string, unknown>): Re
     if (!el) continue; // schema 驗證已保證存在;防衛性跳過
     if (b.prop === 'content' && el.type === 'text') {
       el.content = String(value);
+      // 內容被覆蓋 → 逐字 runs 失去對位,丟棄(見 types.ts TextElement.runs 註記)
+      delete el.runs;
     } else if (b.prop === 'src' && el.type === 'image') {
       el.src = String(value);
     }

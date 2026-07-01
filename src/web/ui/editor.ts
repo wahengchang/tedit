@@ -6,7 +6,7 @@
 // 復用 M1 已驗證的 load/save 映射,中心 origin↔左上角換算交給映射層,絕不手刻數學。
 
 import type { Template, SceneElement, ImageElement } from '../../core/scene/types.js';
-import type { ProjectConfig } from '../../core/project.js';
+import type { ProjectConfig, FontFaceSpec } from '../../core/project.js';
 import { buildFontRegistry, BUILTIN_FONTS } from '../../core/project.js';
 import type { EngineHandle } from '../../core/engine/browser-entry.js';
 import { scanVars } from '../../core/resolver/index.js';
@@ -16,7 +16,7 @@ const TYPE_ICON: Record<string, string> = { text: 'T', image: '▦', shape: '◇
 
 let handle: EngineHandle;
 let config: ProjectConfig;
-let fontReg: Record<string, string> = {};
+let fontReg: Record<string, FontFaceSpec[]> = {};
 // D23:一資料夾一專案一模板 → 沒有模板名;projectName 僅供顯示與出圖檔名(取自 project.json name)
 let projectName = 'template';
 let dirty = false;
@@ -664,6 +664,15 @@ function renderProps() {
     `<label class="prop"><span>${label}</span><select data-k="${key}">${opts
       .map((o) => `<option ${o === val ? 'selected' : ''}>${o}</option>`)
       .join('')}</select></label>`;
+  // 字重下拉:選項帶 numeric value;非清單內的自訂字重會被前置保留(不靜默掉成 Regular)
+  const weightF = (label: string, val: number) => {
+    const std: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'SemiBold'], [700, 'Bold']];
+    const opts = std.map(([w, name]) => ({ w, name: `${name} (${w})` }));
+    if (!opts.some((o) => o.w === val)) opts.unshift({ w: val, name: `Custom (${val})` });
+    return `<label class="prop"><span>${label}</span><select data-k="fontWeight">${opts
+      .map((o) => `<option value="${o.w}" ${o.w === val ? 'selected' : ''}>${o.name}</option>`)
+      .join('')}</select></label>`;
+  };
 
   let html = `<div class="prop-head">${TYPE_ICON[el.type]} ${el.id} <em>${el.type}</em></div>`;
   html += numF('X', 'x', el.x) + numF('Y', 'y', el.y);
@@ -675,8 +684,15 @@ function renderProps() {
     html += `<label class="prop col"><span>Content</span><textarea data-k="content" rows="3">${escapeHtml(el.content)}</textarea></label>`;
     html += numF('Size', 'fontSize', el.fontSize);
     html += selF('Font', 'fontFamily', el.fontFamily, fontFamilies());
+    html += weightF('Weight', el.fontWeight ?? 400);
     html += selF('Align', 'align', el.align, ['left', 'center', 'right']);
     html += colorF('Color', 'color', el.color);
+    // 逐字樣式(PR2):雙擊文字選一段 → 套色 / 字重到那段
+    html += `<div class="prop col"><span>Per-word style</span><span style="display:flex;gap:6px;width:100%;align-items:center">` +
+      `<input data-run-color type="color" value="#7c3aed" title="Apply colour to selection">` +
+      `<select data-run-weight title="Apply weight to selection"><option value="">Weight…</option><option value="400">Regular</option><option value="500">Medium</option><option value="600">SemiBold</option><option value="700">Bold</option></select>` +
+      `</span></div>`;
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">Double-click the text, select a word, then pick a colour / weight.</small></div>`;
   } else if (el.type === 'image') {
     html += `<div class="prop"><span>Source</span><b>${el.src}</b></div>`;
     html += selF('Fit', 'fit', el.fit, ['cover', 'contain', 'stretch']);
@@ -1192,6 +1208,21 @@ async function applyPropEdit(e: Event) {
 
   const id = handle.selectedId();
   if (!id) return;
+  // 逐字樣式(PR2):套用到目前文字編輯態的選取範圍;活在 fabric 物件上,存檔時讀成 runs
+  if (input.dataset.runColor !== undefined || input.dataset.runWeight !== undefined) {
+    const style: { color?: string; fontWeight?: number } =
+      input.dataset.runColor !== undefined
+        ? { color: input.value }
+        : input.value
+          ? { fontWeight: Number(input.value) }
+          : {};
+    if (input.dataset.runWeight !== undefined) (input as HTMLSelectElement).selectedIndex = 0; // 重置回 "Weight…"
+    if (Object.keys(style).length === 0) return;
+    const applied = handle.applyRunStyle(style);
+    if (applied) markDirty();
+    else $('#status-sel').textContent = 'Double-click the text and select a word first, then apply per-word style.';
+    return;
+  }
   // 綁定控制先處理
   if (input.dataset.bindToggle) {
     await toggleBinding(id, (input as HTMLInputElement).checked);
@@ -1206,7 +1237,7 @@ async function applyPropEdit(e: Event) {
   const s = scene();
   const el = s.elements.find((x) => x.id === id);
   if (!el) return;
-  const numericKeys = ['x', 'y', 'width', 'height', 'rotation', 'fontSize', 'strokeWidth'];
+  const numericKeys = ['x', 'y', 'width', 'height', 'rotation', 'fontSize', 'fontWeight', 'strokeWidth'];
   const val: string | number = numericKeys.includes(key) ? Number(input.value) : input.value;
   // 直接改 schema 欄位,reload 走映射層(origin/裁切換算由映射層負責)
   (el as unknown as Record<string, string | number>)[key] = val;
