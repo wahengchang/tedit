@@ -22,7 +22,7 @@ const CANVAS_KEYS = ['width', 'height', 'background'];
 const BASE_KEYS = ['id', 'type', 'x', 'y', 'rotation'];
 // 文字元素不存 height(高度由內容推導,見 types.ts 註記)
 const KEYS_BY_TYPE: Record<string, string[]> = {
-  text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'fontWeight', 'color', 'align', 'lineHeight'],
+  text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'fontWeight', 'color', 'align', 'lineHeight', 'runs'],
   image: [...BASE_KEYS, 'width', 'height', 'src', 'fit', 'crop'],
   shape: [...BASE_KEYS, 'width', 'height', 'shape', 'fill', 'stroke', 'strokeWidth'],
   html: [...BASE_KEYS, 'width', 'height', 'src', 'html'],
@@ -144,6 +144,7 @@ function validateElement(
       err(at('align'), '必須是 "left" | "center" | "right"');
     if (!isFiniteNumber(el.lineHeight) || (el.lineHeight as number) <= 0)
       err(at('lineHeight'), '必須是正數(倍數)');
+    if (el.runs !== undefined) validateRuns(el.runs, el.content, at, err);
   } else if (type === 'image') {
     if (typeof el.src !== 'string' || el.src.length === 0) err(at('src'), '必須是非空路徑字串');
     if (el.fit !== 'cover' && el.fit !== 'contain' && el.fit !== 'stretch')
@@ -181,6 +182,47 @@ function validateElement(
     if (el.src !== undefined && typeof el.src !== 'string') err(at('src'), 'src 必須是字串');
     if (el.html !== undefined && typeof el.html !== 'string') err(at('html'), 'html 必須是字串');
   }
+}
+
+const RUN_KEYS = ['start', 'end', 'color', 'fontWeight'];
+
+/**
+ * 逐字樣式區間(PR2)。start/end 是 content 的字元索引(end 不含);
+ * 上界用 code-point 數(grapheme 數 ≤ code-point 數)做寬鬆檢查——映射層載入時再精準夾住。
+ */
+function validateRuns(
+  runs: unknown,
+  content: unknown,
+  at: (field: string) => string,
+  err: (path: string, message: string) => void,
+): void {
+  if (!Array.isArray(runs)) {
+    err(at('runs'), '必須是陣列');
+    return;
+  }
+  const cpLen = typeof content === 'string' ? [...content].length : 0;
+  runs.forEach((r, i) => {
+    const p = (f: string) => at(`runs[${i}].${f}`);
+    if (!isObject(r)) {
+      err(at(`runs[${i}]`), '必須是物件');
+      return;
+    }
+    for (const key of Object.keys(r)) {
+      if (!RUN_KEYS.includes(key)) err(p(key), '未知欄位(schema 嚴格模式拒絕)');
+    }
+    const startOk = isFiniteNumber(r.start) && Number.isInteger(r.start) && r.start >= 0;
+    if (!startOk) err(p('start'), '必須是 >= 0 的整數');
+    if (!isFiniteNumber(r.end) || !Number.isInteger(r.end) || (startOk && (r.end as number) <= (r.start as number)))
+      err(p('end'), '必須是 > start 的整數');
+    else if (startOk && (r.end as number) > cpLen)
+      err(p('end'), `超出 content 長度(${cpLen})`);
+    if (r.color !== undefined && typeof r.color !== 'string') err(p('color'), '必須是 CSS 色值字串');
+    if (r.fontWeight !== undefined &&
+        (!isFiniteNumber(r.fontWeight) || (r.fontWeight as number) < 100 || (r.fontWeight as number) > 900))
+      err(p('fontWeight'), '必須是 100..900 的數字');
+    if (r.color === undefined && r.fontWeight === undefined)
+      err(at(`runs[${i}]`), '至少要有 color 或 fontWeight 其一');
+  });
 }
 
 const BINDING_KEYS = ['var', 'element', 'prop', 'type'];

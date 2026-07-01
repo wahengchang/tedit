@@ -687,6 +687,12 @@ function renderProps() {
     html += weightF('Weight', el.fontWeight ?? 400);
     html += selF('Align', 'align', el.align, ['left', 'center', 'right']);
     html += colorF('Color', 'color', el.color);
+    // 逐字樣式(PR2):雙擊文字選一段 → 套色 / 字重到那段
+    html += `<div class="prop col"><span>Per-word style</span><span style="display:flex;gap:6px;width:100%;align-items:center">` +
+      `<input data-run-color type="color" value="#7c3aed" title="Apply colour to selection">` +
+      `<select data-run-weight title="Apply weight to selection"><option value="">Weight…</option><option value="400">Regular</option><option value="500">Medium</option><option value="600">SemiBold</option><option value="700">Bold</option></select>` +
+      `</span></div>`;
+    html += `<div class="prop"><span></span><small style="color:var(--muted)">Double-click the text, select a word, then pick a colour / weight.</small></div>`;
   } else if (el.type === 'image') {
     html += `<div class="prop"><span>Source</span><b>${el.src}</b></div>`;
     html += selF('Fit', 'fit', el.fit, ['cover', 'contain', 'stretch']);
@@ -1202,6 +1208,21 @@ async function applyPropEdit(e: Event) {
 
   const id = handle.selectedId();
   if (!id) return;
+  // 逐字樣式(PR2):套用到目前文字編輯態的選取範圍;活在 fabric 物件上,存檔時讀成 runs
+  if (input.dataset.runColor !== undefined || input.dataset.runWeight !== undefined) {
+    const style: { color?: string; fontWeight?: number } =
+      input.dataset.runColor !== undefined
+        ? { color: input.value }
+        : input.value
+          ? { fontWeight: Number(input.value) }
+          : {};
+    if (input.dataset.runWeight !== undefined) (input as HTMLSelectElement).selectedIndex = 0; // 重置回 "Weight…"
+    if (Object.keys(style).length === 0) return;
+    const applied = handle.applyRunStyle(style);
+    if (applied) markDirty();
+    else $('#status-sel').textContent = 'Double-click the text and select a word first, then apply per-word style.';
+    return;
+  }
   // 綁定控制先處理
   if (input.dataset.bindToggle) {
     await toggleBinding(id, (input as HTMLInputElement).checked);
