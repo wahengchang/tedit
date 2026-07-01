@@ -90,7 +90,9 @@ my-project/                      ← tedit ui --dir ./my-project
     "background": "#ffffff"
   },
   "fonts": [                             // 字體註冊表(§4)
-    { "family": "Noto Sans TC", "file": "assets/fonts/NotoSansTC-Regular.otf" }
+    { "family": "Noto Sans TC", "file": "assets/fonts/NotoSansTC-Regular.otf" },
+    // 同一 family 多字重:各字重一筆,weight 100..900(省略視為 400)
+    { "family": "Noto Sans TC", "file": "assets/fonts/NotoSansTC-Bold.otf", "weight": 700 }
   ]
 }
 ```
@@ -101,6 +103,7 @@ my-project/                      ← tedit ui --dir ./my-project
 2. 字體以 `project.json` 的 `fonts[]` 註冊;模板內只存 `fontFamily` 名稱。
 3. 編輯器與 headless 一律經 FontFace API 載入註冊表字體,並等 `document.fonts.ready` resolve 才允許渲染(引擎守門,見 ARCHITECTURE §6)。
 4. 渲染時模板引用的字體名不在註冊表、或檔案不存在 → **stderr 明確列出缺哪個字體 + exit 5,不靜默 fallback**。靜默 fallback 會產出「看似成功但字不對」的圖,比失敗更糟。
+5. **字重(fontWeight,PR1)**:模板 `text.fontWeight`(100..900,選填,預設 400)對映該 family 註冊的對應字重檔。**缺該字重不算缺字體**——瀏覽器以合成粗體(faux bold)兜底;編輯器與 headless 同引擎故合成結果同像素。要真粗體就在 `fonts[]` 另註冊一筆帶 `weight` 的字檔(tedit 不打包粗體,由使用者自帶)。
 
 失效情境示例:使用者把模板複製到另一專案但忘了帶字體檔 → render 立即 exit 5 並指名缺檔,而非默默換字出圖。
 

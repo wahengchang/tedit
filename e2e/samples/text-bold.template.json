@@ -1,0 +1,19 @@
+{
+  "teditVersion": "0.1",
+  "canvas": { "width": 800, "height": 400, "background": "#ffffff" },
+  "elements": [
+    {
+      "id": "t1", "type": "text", "x": 60, "y": 50, "width": 640, "rotation": 0,
+      "content": "字重 700 粗體:春江潮水連海平。Bold weight parity sample — 編輯態與出圖同像素。",
+      "fontFamily": "Noto Sans TC", "fontSize": 30, "fontWeight": 700, "color": "#1a1a1a",
+      "align": "left", "lineHeight": 1.5
+    },
+    {
+      "id": "t2", "type": "text", "x": 60, "y": 240, "width": 640, "rotation": 0,
+      "content": "字重 500 中黑:海上明月共潮生。Medium weight line.",
+      "fontFamily": "Noto Sans TC", "fontSize": 26, "fontWeight": 500, "color": "#444444",
+      "align": "left", "lineHeight": 1.4
+    }
+  ],
+  "bindings": []
+}

@@ -76,7 +76,7 @@ function deepCompare(expected, actual, basePath = '$', out = []) {
   return out;
 }
 
-const FONT_URLS = { 'Noto Sans TC': '/assets/fonts/NotoSansTC-Regular.otf' };
+const FONT_URLS = { 'Noto Sans TC': [{ url: '/assets/fonts/NotoSansTC-Regular.otf', weight: 400 }] };
 
 async function bootAndLoad(page, port, mode, scene) {
   await page.goto(`http://127.0.0.1:${port}/__tedit/headless.html`);

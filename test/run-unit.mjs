@@ -128,5 +128,39 @@ const baseScene = () => ({
   check('html 缺 height → 失敗', validateTemplate(noH).ok === false);
 }
 
+// 10. validate:text.fontWeight(PR1 字重,選填 100..900)
+{
+  const withWeight = structuredClone(baseScene());
+  withWeight.elements[0].fontWeight = 700;
+  check('text.fontWeight=700 → 通過', validateTemplate(withWeight).ok === true);
+
+  const noWeight = structuredClone(baseScene());
+  check('text 省略 fontWeight → 通過(選填)', validateTemplate(noWeight).ok === true);
+
+  for (const bad of [99, 901, 'bold', null]) {
+    const b = structuredClone(baseScene());
+    b.elements[0].fontWeight = bad;
+    const r = validateTemplate(b);
+    check(`text.fontWeight=${JSON.stringify(bad)} → 失敗`, r.ok === false && r.errors.some((e) => e.path.includes('fontWeight')));
+  }
+}
+
+// 11. buildFontRegistry:同 family 多字重(PR1 不打包、使用者自帶 Bold)
+{
+  const { buildFontRegistry, BUILTIN_FONTS } = await imp('core/project.js');
+  const builtin = BUILTIN_FONTS[0].family;
+
+  const base = buildFontRegistry({ fonts: [] });
+  check('內建字進註冊表(family→[{url,weight}])', Array.isArray(base[builtin]) && base[builtin].some((s) => s.weight === 400));
+
+  const withBold = buildFontRegistry({ fonts: [{ family: builtin, file: 'fonts/Bold.woff2', weight: 700 }] });
+  const weights = withBold[builtin].map((s) => s.weight).sort();
+  check('自帶 Bold 700 → 同 family 追加字重', weights.includes(400) && weights.includes(700));
+  check('Bold URL = /相對路徑', withBold[builtin].find((s) => s.weight === 700).url === '/fonts/Bold.woff2');
+
+  const override = buildFontRegistry({ fonts: [{ family: builtin, file: 'fonts/MyRegular.woff2' }] });
+  check('同 (family,weight) 專案覆蓋內建', override[builtin].filter((s) => s.weight === 400).length === 1 && override[builtin][0].url === '/fonts/MyRegular.woff2');
+}
+
 console.error(failures === 0 ? '\n單元測試全部通過' : `\n單元測試 ${failures} 項失敗`);
 process.exit(failures === 0 ? 0 : 1);

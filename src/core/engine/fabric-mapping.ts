@@ -144,6 +144,7 @@ export async function elementToObject(el: SceneElement, assetBase: string): Prom
     width: t.width,
     fontFamily: t.fontFamily,
     fontSize: t.fontSize,
+    fontWeight: t.fontWeight ?? 400, // 省略 = 400;family 缺該字重時瀏覽器合成粗體
     fill: t.color,
     textAlign: t.align,
     lineHeight: t.lineHeight / FABRIC_LINE_HEIGHT_MULT,
@@ -267,7 +268,7 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
       out.elements.push(imageEl);
     } else {
       const t = m as unknown as Textbox & TeditMeta;
-      out.elements.push({
+      const textEl: TextElement = {
         id: m.teditId,
         type: 'text',
         x: round(cx - (t.width * t.scaleX) / 2),
@@ -280,7 +281,11 @@ export function save(canvas: AnyCanvas, scene: Template): Template {
         color: t.fill as string,
         align: t.textAlign as TextElement['align'],
         lineHeight: round(t.lineHeight * FABRIC_LINE_HEIGHT_MULT),
-      });
+      };
+      // 400 不回寫,保持既有樣本往返相等(照 image.crop 選填慣例)
+      const fw = Number(t.fontWeight);
+      if (Number.isFinite(fw) && fw !== 400) textEl.fontWeight = fw;
+      out.elements.push(textEl);
     }
   }
   return out;

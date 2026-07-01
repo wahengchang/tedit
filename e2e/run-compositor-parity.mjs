@@ -17,7 +17,7 @@ const ROOT = path.dirname(E2E);
 const DIST_WEB = path.join(ROOT, 'dist', 'web');
 const FIXTURE = path.join(E2E, 'fixtures', 'project');
 
-const FONTS = { 'Noto Sans TC': '/assets/fonts/NotoSansTC-Regular.otf' };
+const FONTS = { 'Noto Sans TC': [{ url: '/assets/fonts/NotoSansTC-Regular.otf', weight: 400 }] };
 
 // 三層交錯場景:矩形(底)→ html iframe(中)→ 文字(頂)
 const HTML_SCENE = {

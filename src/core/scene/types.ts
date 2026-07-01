@@ -53,6 +53,13 @@ export interface TextElement extends ElementBase {
   /** 須存在於 project.json fonts[] 或為內建預設字 */
   fontFamily: string;
   fontSize: number;
+  /**
+   * 字重 100–900(選填,預設 400 Regular)。
+   * family 沒註冊該字重的實體字檔時,瀏覽器以「合成粗體」(faux bold)兜底;
+   * 編輯器與 headless 同一顆引擎,合成結果一致故同像素不破。
+   * 省略等同 400;save 時 400 不回寫(保持既有樣本往返相等)。
+   */
+  fontWeight?: number;
   color: string;
   align: 'left' | 'center' | 'right';
   /** 倍數,如 1.4 */

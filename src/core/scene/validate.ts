@@ -22,7 +22,7 @@ const CANVAS_KEYS = ['width', 'height', 'background'];
 const BASE_KEYS = ['id', 'type', 'x', 'y', 'rotation'];
 // 文字元素不存 height(高度由內容推導,見 types.ts 註記)
 const KEYS_BY_TYPE: Record<string, string[]> = {
-  text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'color', 'align', 'lineHeight'],
+  text: [...BASE_KEYS, 'width', 'content', 'fontFamily', 'fontSize', 'fontWeight', 'color', 'align', 'lineHeight'],
   image: [...BASE_KEYS, 'width', 'height', 'src', 'fit', 'crop'],
   shape: [...BASE_KEYS, 'width', 'height', 'shape', 'fill', 'stroke', 'strokeWidth'],
   html: [...BASE_KEYS, 'width', 'height', 'src', 'html'],
@@ -136,6 +136,9 @@ function validateElement(
       err(at('fontFamily'), '必須是非空字串');
     if (!isFiniteNumber(el.fontSize) || (el.fontSize as number) <= 0)
       err(at('fontSize'), '必須是正數');
+    if (el.fontWeight !== undefined &&
+        (!isFiniteNumber(el.fontWeight) || (el.fontWeight as number) < 100 || (el.fontWeight as number) > 900))
+      err(at('fontWeight'), '必須是 100..900 的數字(選填,預設 400)');
     if (typeof el.color !== 'string') err(at('color'), '必須是 CSS 色值字串');
     if (el.align !== 'left' && el.align !== 'center' && el.align !== 'right')
       err(at('align'), '必須是 "left" | "center" | "right"');

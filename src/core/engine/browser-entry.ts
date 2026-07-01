@@ -3,6 +3,7 @@
 
 import { Canvas, StaticCanvas, Pattern, type FabricObject } from 'fabric';
 import type { Template, SceneElement } from '../scene/types.js';
+import type { FontFaceSpec } from '../project.js';
 import { load, save } from './fabric-mapping.js';
 import { loadFont, markRenderStart, markRenderDone } from './gate.js';
 import { renderLayers } from './compositor.js';
@@ -14,7 +15,7 @@ export interface LayerInfo {
 }
 
 export interface EngineHandle {
-  loadScene(scene: Template, fontRegistry: Record<string, string>, assetBase: string): Promise<void>;
+  loadScene(scene: Template, fontRegistry: Record<string, FontFaceSpec[]>, assetBase: string): Promise<void>;
   saveScene(): Template;
   deselect(): void;
   /** 底層 fabric 畫布(編輯器接線用;headless 不碰) */
@@ -58,9 +59,9 @@ function boot(mode: 'edit' | 'view', container: HTMLElement): EngineHandle {
       container.style.overflow = 'hidden';
       for (const el of scene.elements) {
         if (el.type !== 'text') continue;
-        const url = fontRegistry[el.fontFamily];
-        if (!url) throw new Error(`字體未註冊:${el.fontFamily}`);
-        await loadFont(el.fontFamily, url);
+        const specs = fontRegistry[el.fontFamily];
+        if (!specs || specs.length === 0) throw new Error(`字體未註冊:${el.fontFamily}`);
+        for (const spec of specs) await loadFont(el.fontFamily, spec.url, spec.weight);
       }
       await load(canvas, scene, assetBase);
       markRenderDone();
